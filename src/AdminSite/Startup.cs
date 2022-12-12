@@ -17,11 +17,13 @@ namespace Microsoft.Marketplace.Saas.Web
     using Microsoft.Extensions.Logging;
     using Microsoft.IdentityModel.Protocols.OpenIdConnect;
     using Microsoft.Marketplace.Metering;
+    using Microsoft.Marketplace.Saas.Web.Controllers;
     using Microsoft.Marketplace.SaaS;
     using Microsoft.Marketplace.SaaS.SDK.Services.Configurations;
     using Microsoft.Marketplace.SaaS.SDK.Services.Contracts;
     using Microsoft.Marketplace.SaaS.SDK.Services.Models;
     using Microsoft.Marketplace.SaaS.SDK.Services.Services;
+    using Microsoft.Marketplace.SaaS.SDK.Services.StatusHandlers;
     using Microsoft.Marketplace.SaaS.SDK.Services.Utilities;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Context;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Contracts;
@@ -56,12 +58,6 @@ namespace Microsoft.Marketplace.Saas.Web
         /// <param name="services">The services.</param>
         public void ConfigureServices(IServiceCollection services)
         {
-            var loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder
-                    .AddConsole();
-            });
-
             services.Configure<CookiePolicyOptions>(options =>
             {
                 // This lambda determines whether user consent for non-essential cookies is needed for a given request.
@@ -118,6 +114,25 @@ namespace Microsoft.Marketplace.Saas.Web
                 .AddSingleton<IMeteredBillingApiService>(new MeteredBillingApiService(new MarketplaceMeteringClient(creds), config, new MeteringApiClientLogger()))
                 .AddSingleton<SaaSApiClientConfiguration>(config)
                 .AddSingleton<KnownUsersModel>(knownUsers);
+
+            services
+                .AddScoped<KnownUserAttribute>()
+                .AddScoped<LoggerActionFilter>()
+                .AddScoped<ExceptionHandlerAttribute>()
+                .AddScoped<IEmailService, SMTPEmailService>()
+                .AddScoped<ApplicationLogService>()
+                .AddScoped<ApplicationConfigService>()
+                .AddScoped<SubscriptionService>()
+                .AddScoped<UserService>()
+                .AddScoped<OfferService>()
+                .AddScoped<PlanService>();
+
+            services
+                .AddScoped<PendingActivationStatusHandler>()
+                .AddScoped<PendingFulfillmentStatusHandler>()
+                .AddScoped<UnsubscribeStatusHandler>()
+                .AddScoped<NotificationStatusHandler>();
+
 
             services
                 .AddDbContext<SaasKitContext>(options => options.UseSqlServer(this.Configuration.GetConnectionString("DefaultConnection")));
@@ -191,8 +206,6 @@ namespace Microsoft.Marketplace.Saas.Web
             services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
             services.AddScoped<IPlanEventsMappingRepository, PlanEventsMappingRepository>();
             services.AddScoped<IEventsRepository, EventsRepository>();
-            services.AddScoped<KnownUserAttribute>();
-            services.AddScoped<IEmailService, SMTPEmailService>();
             services.AddScoped<ISchedulerFrequencyRepository, SchedulerFrequencyRepository>();
             services.AddScoped<IMeteredPlanSchedulerManagementRepository, MeteredPlanSchedulerManagementRepository>();
             services.AddScoped<ISchedulerManagerViewRepository, SchedulerManagerViewRepository>();

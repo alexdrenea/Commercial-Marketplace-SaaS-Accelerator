@@ -157,11 +157,12 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.Services
         /// GetAllPlansForSubscription By SubscriptionId.
         /// </summary>
         /// <param name="subscriptionId">The subscription identifier.</param>
+        /// <param name="internalOfferId">The intenral id for the offer in the saas accelerator databse</param>
         /// <returns>
         /// Get AllPlans For SubscriptionId.
         /// </returns>
         /// <exception cref="FulfillmentException">Invalid subscription ID.</exception>
-        public async Task<List<PlanDetailResultExtension>> GetAllPlansForSubscriptionAsync(Guid subscriptionId)
+        public async Task<List<PlanDetailResultExtension>> GetAllPlansForSubscriptionAsync(Guid subscriptionId, Guid internalOfferId)
         {
             this.Logger?.Info($"Inside GetAllPlansForSubscriptionAsync() of FulfillmentApiService, trying to Get All Plans for {subscriptionId}");
             if (subscriptionId != default)
@@ -169,7 +170,7 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.Services
                 try
                 {
                     var availablePlans = (await this.marketplaceClient.Fulfillment.ListAvailablePlansAsync(subscriptionId)).Value;
-                    return availablePlans.Plans.planResults();
+                    return availablePlans.Plans.Select(p => p.planResult(internalOfferId)).ToList();
                 }
                 catch (RequestFailedException ex)
                 {

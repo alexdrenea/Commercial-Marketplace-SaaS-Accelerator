@@ -32,7 +32,7 @@
 
         private readonly ILogger<OffersController> logger;
 
-        private OfferServices offersService;
+        private OfferService offersService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OffersController"/> class.
@@ -49,7 +49,7 @@
             this.applicationConfigRepository = applicationConfigRepository;
             this.usersRepository = usersRepository;
             this.valueTypesRepository = valueTypesRepository;
-            this.offersService = new OfferServices(this.offersRepository);
+            this.offersService = new OfferService(this.offersRepository);
             this.offersAttributeRepository = offersAttributeRepository;
             this.logger = logger;
         }

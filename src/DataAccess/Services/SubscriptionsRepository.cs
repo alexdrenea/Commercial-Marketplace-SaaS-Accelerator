@@ -138,16 +138,9 @@
         /// <param name="subscriptionId">The subscription identifier.</param>
         /// <param name="isIncludeDeactvated">if set to <c>true</c> [is include deactvated].</param>
         /// <returns> List of Subscriptions.</returns>
-        public IEnumerable<Subscriptions> GetSubscriptionsByEmailAddress(string partnerEmailAddress, Guid subscriptionId, bool isIncludeDeactvated = false)
+        public IEnumerable<Subscriptions> GetSubscriptionsByEmailAddress(string partnerEmailAddress, bool isIncludeDeactvated = false)
         {
-            if (subscriptionId != default)
-            {
-                return this.context.Subscriptions.Include(s => s.User).Where(s => s.User != null && s.User.EmailAddress == partnerEmailAddress && s.AmpsubscriptionId == subscriptionId);
-            }
-            else
-            {
-                return this.context.Subscriptions.Include(s => s.User).Where(s => s.User != null && s.User.EmailAddress == partnerEmailAddress);
-            }
+            return this.context.Subscriptions.Include(s => s.User).Where(s => s.User != null && s.User.EmailAddress == partnerEmailAddress);
         }
 
         /// <summary>

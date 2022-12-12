@@ -27,23 +27,25 @@
         /// <summary>
         /// Adds the partner detail.
         /// </summary>
-        /// <param name="partnerDetailViewModel">The partner detail view model.</param>
+        /// <param name="userModel">The partner detail view model.</param>
         /// <returns> User id.</returns>
-        public int AddUser(PartnerDetailViewModel partnerDetailViewModel)
+        public UserModel AddUser(UserModel userModel)
         {
-            if (!string.IsNullOrEmpty(partnerDetailViewModel.EmailAddress))
+            if (!string.IsNullOrEmpty(userModel.EmailAddress))
             {
                 Users newPartnerDetail = new Users()
                 {
-                    UserId = partnerDetailViewModel.UserId,
-                    EmailAddress = partnerDetailViewModel.EmailAddress,
-                    FullName = partnerDetailViewModel.FullName,
+                    UserId = userModel.UserId,
+                    EmailAddress = userModel.EmailAddress,
+                    FullName = userModel.FullName,
                     CreatedDate = DateTime.Now,
                 };
-                return this.userRepository.Save(newPartnerDetail);
+                var userId = this.userRepository.Save(newPartnerDetail);
+                userModel.UserId = userId;
+                return userModel;
             }
 
-            return 0;
+            return null;
         }
 
         /// <summary>
@@ -51,14 +53,22 @@
         /// </summary>
         /// <param name="partnerEmail">The partner email.</param>
         /// <returns>returns user id.</returns>
-        public int GetUserIdFromEmailAddress(string partnerEmail)
+        public UserModel GetUserFromEmailAddress(string partnerEmail)
         {
-            if (!string.IsNullOrEmpty(partnerEmail))
-            {
-                return this.userRepository.GetPartnerDetailFromEmail(partnerEmail).UserId;
-            }
+            if (string.IsNullOrEmpty(partnerEmail))
+                return null;
 
-            return 0;
+            var user = this.userRepository.GetPartnerDetailFromEmail(partnerEmail);
+            if (user == null) 
+                    return null;
+
+            return new UserModel
+            {
+                UserId = user.UserId,
+                EmailAddress = user.EmailAddress,
+                FullName = user.FullName,
+                CreatedDate = user.CreatedDate
+            };
         }
     }
 }

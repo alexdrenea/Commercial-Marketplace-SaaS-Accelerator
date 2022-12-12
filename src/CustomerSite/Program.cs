@@ -19,11 +19,12 @@ namespace Microsoft.Marketplace.SaasKit.Client
             var loggerFactory = LoggerFactory.Create(builder =>
             {
                 builder
-                    .AddConsole();
+                    .AddConsole()
+                    .AddDebug();
             });
 
             ILogger logger = loggerFactory.CreateLogger<Program>();
-            logger.LogInformation("Povisioning service initialized!!");
+            logger.LogInformation("Customer Portal initialized!!");
         }
 
         /// <summary>
@@ -32,16 +33,17 @@ namespace Microsoft.Marketplace.SaasKit.Client
         /// <param name="args">The arguments.</param>
         /// <returns> Host Builder.</returns>
         public static IHostBuilder CreateHostBuilder(string[] args) =>
-    Host.CreateDefaultBuilder(args)
-        .ConfigureLogging(logging =>
-        {
-            logging.ClearProviders();
-            logging.AddConsole();
-        })
-        .ConfigureWebHostDefaults(webBuilder =>
-        {
-            webBuilder.UseUrls("https://*:5001", "http://*:5000");
-            webBuilder.UseStartup<Startup>();
-        });
+            Host.CreateDefaultBuilder(args)
+                .ConfigureLogging(logging =>
+                {
+                    logging.ClearProviders();
+                    logging.AddConsole();
+                    logging.AddDebug();
+                })
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    //webBuilder.UseUrls("https://*:5001", "http://*:5000");
+                    webBuilder.UseStartup<Startup>();
+                });
     }
 }

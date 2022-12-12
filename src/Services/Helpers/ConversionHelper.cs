@@ -88,25 +88,13 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.Helpers
         }
 
         /// <summary>
-        /// Convert Plan model list to PlanResult model list.
-        /// </summary>
-        /// <param name="plans">The Plan model list.</param>
-        /// <returns>
-        /// PlanDetailResult List.
-        /// </returns>
-        public static List<PlanDetailResultExtension> planResults(this IReadOnlyList<Plan> plans)
-        {
-            return plans.Select(x => x.planResult()).ToList();
-        }
-
-        /// <summary>
         /// Convert Plan model  to PlanResult model .
         /// </summary>
         /// <param name="plan">The plan model.</param>
         /// <returns>
         /// PlanDetailResult.
         /// </returns>
-        public static PlanDetailResultExtension planResult(this Plan plan)
+        public static PlanDetailResultExtension planResult(this Plan plan, Guid internalOfferGuid)
         {
             return new PlanDetailResultExtension()
             {
@@ -118,8 +106,10 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.Helpers
                 IsPerUserPlan = plan.IsPricePerSeat ?? false,
                 IsStopSell = plan.IsStopSell ?? false,
                 Market = plan.Market,
-                PlanComponents = getPlanComponentsFromPlan(plan)
-            };
+                PlanComponents = getPlanComponentsFromPlan(plan),
+                OfferId = internalOfferGuid,
+                PlanGUID = Guid.NewGuid(),
+        };
         }
         /// <summary>
         /// Exctract Meter and Billing dimi

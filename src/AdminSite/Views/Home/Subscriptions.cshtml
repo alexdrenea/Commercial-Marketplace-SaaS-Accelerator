@@ -75,23 +75,25 @@
                                                     <a class="nav-link dropdown cm-link-button" href="#" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fa fa-bars"></i></a>
                                                     <div class="dropdown-menu" aria-labelledby="dropdown01">
                                                         <a class="dropdown-item cm-dropdown-option" asp-controller="Home" asp-action="SubscriptionDetails" asp-route-subscriptionId="@Model.Subscriptions[i].Id">View Details</a>
-                                                        @if (subscription.IsMeteringSupported && subscription.SubscriptionStatus == SubscriptionStatusEnumExtension.Subscribed)
-                                                        {
-                                                            <a class="dropdown-item cm-dropdown-option" asp-action="RecordUsage" asp-controller="Home" asp-route-subscriptionId="@subscription.SubscribeId">Manage Usage</a>
-                                                        }
+                                                       
                                                         @if (subscription.SubscriptionStatus == SubscriptionStatusEnumExtension.PendingActivation || subscription.SubscriptionStatus == SubscriptionStatusEnumExtension.PendingFulfillmentStart || subscription.SubscriptionStatus == SubscriptionStatusEnumExtension.ActivationFailed)
                                                         {
                                                             <a class="dropdown-item cm-dropdown-option" asp-action="SubscriptionDetails" asp-route-subscriptionId="@Model.Subscriptions[i].Id" asp-route-planId="@Model.Subscriptions[i].PlanId" asp-route-operation="Activate">Activate</a>
                                                         }
                                                         @if (subscription.SubscriptionStatus == SubscriptionStatusEnumExtension.Subscribed || subscription.SubscriptionStatus == SubscriptionStatusEnumExtension.UnsubscribeFailed)
                                                         {
-                                                            <a class="dropdown-item cm-dropdown-option" onclick="ViewSubscriptionDetail('@Model.Subscriptions[i].Id')" data-target="#Mymode">Change Plan</a>
-                                                            <a class="dropdown-item cm-dropdown-option" asp-action="SubscriptionDetails" asp-route-subscriptionId="@Model.Subscriptions[i].Id" asp-route-planId="@Model.Subscriptions[i].PlanId" asp-route-operation="Deactivate">Unsubscribe</a>
+                                                            <a class="dropdown-item cm-dropdown-option" onclick="ViewChangeSubscriptionDetail('@subscription.Id', 'SubscriptionPlanDetail')" data-target="#Mymode">Change Plan</a>
+                                                            @if (subscription.IsPerUserPlan)
+                                                            {
+                                                                <a class="dropdown-item cm-dropdown-option" onclick="ViewChangeSubscriptionDetail('@subscription.Id', 'SubscriptionQuantityDetail')" data-target="#Mymode">Change Quantity</a>
+                                                            }
+                                                            @if (subscription.IsMeteringSupported)
+                                                            {
+                                                                <a class="dropdown-item cm-dropdown-option" asp-action="RecordUsage" asp-controller="Home" asp-route-subscriptionId="@subscription.Id">Manage Usage</a>
+                                                            }
+                                                            <a class="dropdown-item cm-dropdown-option" asp-action="SubscriptionDetails" asp-route-subscriptionId="@subscription.Id" asp-route-planId="@Model.Subscriptions[i].PlanId" asp-route-operation="Deactivate">Unsubscribe</a>
                                                         }
-                                                        @if (subscription.IsPerUserPlan && subscription.SubscriptionStatus == SubscriptionStatusEnumExtension.Subscribed)
-                                                        {
-                                                            <a class="dropdown-item cm-dropdown-option" onclick="ViewSubscriptionQuantityDetail('@Model.Subscriptions[i].Id')" data-target="#Mymode">Change Quantity</a>
-                                                        }
+                                                       
                                                         <a class="dropdown-item cm-dropdown-option" data-target="#myModal" onclick="ViewSubscriptionlogdetailsById('@subscription.Id')">Activity Log</a>
                                                     </div>
                                                 </div>
@@ -123,70 +125,16 @@
 </div>
 
 <script>
-    function ViewSubscriptionQuantityDetail(subscriptionId) {
+    function ViewChangeSubscriptionDetail(subscriptionId, viewName) {
         $.ajax({
             type: "Get",
-            url: "SubscriptionQuantityDetail",
-            data: { subscriptionId: subscriptionId },
+            url: "ViewChangeSubscriptionDetail",
+            data: { subscriptionId: subscriptionId, viewName: viewName },
             contentType: "application/json; charset=utf-8",
             datatype: "json",
             success: function (data) {
                 $('#myModal').html(data);
                 $('#myModal').modal();
-            },
-            error: function () {
-                alert("Content load failed.");
-            }
-        });
-    }
-    function ViewSubscriptionlogdetailsById(subscriptionId) {
-        $.ajax({
-            type: "Get",
-            url: "SubscriptionLogDetail",
-            data: { subscriptionId: subscriptionId },
-            contentType: "application/json; charset=utf-8",
-            datatype: "json",
-            success: function (data) {
-                $('#myModal').html(data);
-                $('#myModal').modal();
-            },
-            error: function () {
-                alert("Content load failed.");
-            }
-        });
-    }
-
-    function confirmDialog() {
-        //var isConfirm = confirm('Are you sure you want to change the plan?');
-        //debugger
-        //if (isConfirm) {
-        //    $("#frmSubscriptionDetail").submit();
-        //}
-
-        var newPlanName = $('#PlanId').val();
-        swal({
-            text: "Are you sure you want to switch to " + newPlanName + " plan?",
-            icon: "warning",
-            buttons: true,
-            dangerMode: true,
-        })
-            .then((willChange) => {
-                if (willChange) {
-                    $("#frmSubscriptionDetail").submit();
-                }
-            });
-    }
-    function ViewSubscriptionDetail(subscriptionId) {
-        $.ajax({
-            type: "Get",
-            url: "ViewSubscriptionDetail",
-            data: { subscriptionId: subscriptionId },
-            contentType: "application/json; charset=utf-8",
-            datatype: "json",
-            success: function (data) {
-                $('#myModal').html(data);
-                $('#myModal').modal();
-
             },
             error: function () {
                 swal({
@@ -197,27 +145,61 @@
             }
         });
     }
-    function confirmQuantityDialog() {
-        //var isConfirm = confirm('Are you sure you want to change the plan?');
-        //debugger
-        //if (isConfirm) {
-        //    $("#frmSubscriptionDetail").submit();
-        //}
 
-        var newPlanName = $('#PlanId').val();
+    function confirmQuantityDialog() {
+        var newQuantity = $('#Quantity').val();
         swal({
-            text: "Are you sure you want to Change the quantity?",
+            text: "Are you sure you want to Change the quantity to " + newQuantity + "?",
             icon: "warning",
             buttons: true,
             dangerMode: true,
         })
             .then((willChange) => {
-                debugger;
                 if (willChange) {
                     $("#frmSubscriptionQuantityDetailAdmin").submit();
                 }
             });
     }
+
+    function confirmPlanDialog() {
+        var newPlanName = $('#PlanId').val();
+        swal({
+            text: "Are you sure you want to switch to " + newPlanName + " plan?",
+            icon: "warning",
+            buttons: true,
+            dangerMode: true,
+        })
+            .then((willChange) => {
+                if (willChange) {
+                    $("#frmSubscriptionPlanDetailAdmin").submit();
+                }
+            });
+    }
+
+
+    function ViewSubscriptionlogdetailsById(subscriptionId) {
+        $.ajax({
+            type: "Get",
+            url: "ViewSubscriptionLogDetail",
+            data: { subscriptionId: subscriptionId },
+            contentType: "application/json; charset=utf-8",
+            datatype: "json",
+            success: function (data) {
+                $('#myModal').html(data);
+                $('#myModal').modal();
+            },
+            error: function () {
+                swal({
+                    title: "Error",
+                    text: "Content load failed.",
+                    icon: "Error"
+                })
+            }
+        });
+    }
+
+   
+  
     function fetchAllSubscriptions() {
         $.ajax({
             type: "Post",

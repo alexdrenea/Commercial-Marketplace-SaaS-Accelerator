@@ -22,29 +22,9 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers.WebHook
     public class AzureWebhookController : ControllerBase
     {
         /// <summary>
-        /// The application log repository.
-        /// </summary>
-        private readonly IApplicationLogRepository applicationLogRepository;
-
-        /// <summary>
-        /// The subscriptions repository.
-        /// </summary>
-        private readonly ISubscriptionsRepository subscriptionsRepository;
-
-        /// <summary>
         /// The current configuration
         /// </summary>
         private readonly SaaSApiClientConfiguration configuration;
-
-        /// <summary>
-        /// The plan repository.
-        /// </summary>
-        private readonly IPlansRepository planRepository;
-
-        /// <summary>
-        /// The subscriptions log repository.
-        /// </summary>
-        private readonly ISubscriptionLogRepository subscriptionsLogRepository;
 
         /// <summary>
         /// The web hook processor.
@@ -57,11 +37,6 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers.WebHook
         private readonly ApplicationLogService applicationLogService;
 
         /// <summary>
-        /// The subscription service.
-        /// </summary>
-        private readonly SubscriptionService subscriptionService;
-
-        /// <summary>
         /// Initializes a new instance of the <see cref="AzureWebhookController"/> class.
         /// </summary>
         /// <param name="applicationLogRepository">The application log repository.</param>
@@ -70,16 +45,11 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers.WebHook
         /// <param name="planRepository">The plan repository.</param>
         /// <param name="subscriptionsRepository">The subscriptions repository.</param>
         /// <param name="configuration">The SaaSApiClientConfiguration from ENV</param>
-        public AzureWebhookController(IApplicationLogRepository applicationLogRepository, IWebhookProcessor webhookProcessor, ISubscriptionLogRepository subscriptionsLogRepository, IPlansRepository planRepository, ISubscriptionsRepository subscriptionsRepository, SaaSApiClientConfiguration configuration)
+        public AzureWebhookController(ApplicationLogService applicationLogService, IWebhookProcessor webhookProcessor, ISubscriptionLogRepository subscriptionsLogRepository, IPlansRepository planRepository, ISubscriptionsRepository subscriptionsRepository, SaaSApiClientConfiguration configuration)
         {
-            this.applicationLogRepository = applicationLogRepository;
-            this.subscriptionsRepository = subscriptionsRepository;
             this.configuration = configuration;
-            this.planRepository = planRepository;
-            this.subscriptionsLogRepository = subscriptionsLogRepository;
             this.webhookProcessor = webhookProcessor;
-            this.applicationLogService = new ApplicationLogService(this.applicationLogRepository);
-            this.subscriptionService = new SubscriptionService(this.subscriptionsRepository, this.planRepository);
+            this.applicationLogService = applicationLogService;
         }
 
         /// <summary>

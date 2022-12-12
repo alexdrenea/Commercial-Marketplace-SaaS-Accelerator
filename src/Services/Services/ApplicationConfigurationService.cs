@@ -51,6 +51,14 @@
         /// <summary>
         /// Get an Application Config item by Id.
         /// </summary>
+        public string GetValueByName(string name)
+        {
+            return this.appConfigRepository.GetValueByName(name);
+        }
+
+        /// <summary>
+        /// Get an Application Config item by Id.
+        /// </summary>
         public ApplicationConfiguration GetById(int Id)
         {
             return this.appConfigRepository.GetById(Id);
