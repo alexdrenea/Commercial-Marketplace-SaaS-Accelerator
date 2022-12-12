@@ -12,6 +12,7 @@
     using Microsoft.Marketplace.SaaS.SDK.Services.Utilities;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Contracts;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Entities;
+    using Microsoft.Marketplace.SaasKit.Client.DataAccess.Services;
 
     /// <summary>
     /// Offers Controller.
@@ -43,7 +44,15 @@
         /// <param name="valueTypesRepository">The value types repository.</param>
         /// <param name="offersAttributeRepository">The offers attribute repository.</param>
         /// <param name="logger">The logger.</param>
-        public OffersController(IOffersRepository offersRepository, IApplicationConfigRepository applicationConfigRepository, IUsersRepository usersRepository, IValueTypesRepository valueTypesRepository, IOfferAttributesRepository offersAttributeRepository, ILogger<OffersController> logger)
+        public OffersController(
+            CurrentUserComponent currentUserComponent,
+            IOffersRepository offersRepository, 
+            IApplicationConfigRepository applicationConfigRepository, 
+            IUsersRepository usersRepository, 
+            IValueTypesRepository valueTypesRepository, 
+            IOfferAttributesRepository offersAttributeRepository, 
+            ILogger<OffersController> logger)
+        :base(currentUserComponent)
         {
             this.offersRepository = offersRepository;
             this.applicationConfigRepository = applicationConfigRepository;
@@ -65,7 +74,6 @@
             {
                 List<OffersModel> getAllOffersData = new List<OffersModel>();
                 this.TempData["ShowWelcomeScreen"] = "True";
-                var currentUserDetail = this.usersRepository.GetPartnerDetailFromEmail(this.CurrentUserEmailAddress);
 
                 getAllOffersData = this.offersService.GetOffers();
 
@@ -92,7 +100,6 @@
             {
                 OffersViewModel offersData = new OffersViewModel();
                 this.TempData["ShowWelcomeScreen"] = "True";
-                var currentUserDetail = this.usersRepository.GetPartnerDetailFromEmail(this.CurrentUserEmailAddress);
                 offersData = this.offersService.GetOfferOnId(offerGuId);
 
                 var offerAttributes = this.offersAttributeRepository.GetInputAttributesByOfferId(offerGuId);
@@ -120,7 +127,7 @@
                             IsRequired = offerAttribute.IsRequired ?? false,
                             IsDelete = offerAttribute.IsDelete ?? false,
                             CreateDate = DateTime.Now,
-                            UserId = currentUserDetail == null ? 0 : currentUserDetail.UserId,
+                            UserId = _currentUserComponent.UserId,
                             OfferId = offersData.OfferGuid,
                         };
                         offersData.OfferAttributes.Add(existingOfferAttribute);
@@ -149,7 +156,6 @@
             this.logger.LogInformation("Offers Controller / OfferDetails:  offerGuId {0}", JsonSerializer.Serialize(offersData));
             try
             {
-                var currentUserDetail = this.usersRepository.GetPartnerDetailFromEmail(this.CurrentUserEmailAddress);
                 if (offersData != null && offersData.OfferAttributes != null)
                 {
                     // query
@@ -174,7 +180,7 @@
                             IsRequired = offerAttribute.IsRequired,
                             IsDelete = offerAttribute.IsDelete,
                             CreateDate = DateTime.Now,
-                            UserId = currentUserDetail == null ? 0 : currentUserDetail.UserId,
+                            UserId = _currentUserComponent.UserId,
                             OfferId = offersData.OfferGuid,
                         };
                         this.offersAttributeRepository.Add(newOfferAttribute);

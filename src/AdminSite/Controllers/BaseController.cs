@@ -1,11 +1,14 @@
 ﻿namespace Microsoft.Marketplace.Saas.Web.Controllers
 {
     using System.Linq;
+    using System.Threading.Tasks;
     using Microsoft.AspNetCore.Authentication;
     using Microsoft.AspNetCore.Authentication.OpenIdConnect;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Mvc.Filters;
     using Microsoft.Marketplace.SaaS.SDK.Services.Models;
     using Microsoft.Marketplace.SaaS.SDK.Services.Utilities;
+    using Microsoft.Marketplace.SaasKit.Client.DataAccess.Services;
 
     /// <summary>
     /// Base Controller.
@@ -13,53 +16,25 @@
     /// <seealso cref="Microsoft.AspNetCore.Mvc.Controller" />
     public class BaseController : Controller
     {
+        internal readonly CurrentUserComponent _currentUserComponent;
+
         /// <summary>
-        /// Initializes a new instance of the <see cref="BaseController" /> class.
+        /// Initializes a new instance of the <see cref="BaseController"/> class.
         /// </summary>
-        public BaseController()
+        public BaseController(CurrentUserComponent currentUserComponent)
         {
-            this.CheckAuthentication();
+            _currentUserComponent = currentUserComponent;
+            CheckAuthentication();
         }
 
-        /// <summary>
-        /// Gets Current Logged in User Email Address.
-        /// </summary>
-        /// <value>
-        /// The current user email address.
-        /// </value>
-        public string CurrentUserEmailAddress
+        public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            get { return (this.HttpContext != null && this.HttpContext.User.Claims.Count() > 0) ? this.HttpContext.User.Claims.Where(s => s.Type == ClaimConstants.CLAIM_EMAILADDRESS).FirstOrDefault().Value : string.Empty; }
-        }
+            await _currentUserComponent.SetCurrentUser(
+                    email: HttpContext?.User?.Claims?.FirstOrDefault(s => s.Type == ClaimConstants.CLAIM_EMAILADDRESS)?.Value ?? string.Empty,
+                    name: HttpContext?.User?.Claims?.FirstOrDefault(s => s.Type == ClaimConstants.CLAIM_NAME)?.Value ?? string.Empty
+               );
 
-        /// <summary>
-        /// Gets Current Logged in User Name.
-        /// </summary>
-        /// <value>
-        /// The name of the current user.
-        /// </value>
-        public string CurrentUserName
-        {
-            get { return (this.HttpContext != null && this.HttpContext.User.Claims.Count() > 0) ? this.HttpContext.User.Claims.Where(s => s.Type == ClaimConstants.CLAIM_NAME).FirstOrDefault().Value : string.Empty; }
-        }
-
-        /// <summary>
-        /// Get Current Logged in User Email Address.
-        /// </summary>
-        /// <returns>
-        /// Current Logged User Email.
-        /// </returns>
-        public UserModel GetCurrentUserDetail()
-        {
-            if (this.HttpContext != null && this.HttpContext.User.Identity.IsAuthenticated)
-            {
-                UserModel partnerDetail = new UserModel();
-                partnerDetail.FullName = this.CurrentUserName;
-                partnerDetail.EmailAddress = this.CurrentUserEmailAddress;
-                return partnerDetail;
-            }
-
-            return new UserModel();
+            await base.OnActionExecutionAsync(context, next);
         }
 
         /// <summary>
@@ -68,7 +43,7 @@
         /// <returns>
         /// Check authentication.
         /// </returns>
-        public IActionResult CheckAuthentication()
+        private IActionResult CheckAuthentication()
         {
             if (this.HttpContext == null || !this.HttpContext.User.Identity.IsAuthenticated)
             {

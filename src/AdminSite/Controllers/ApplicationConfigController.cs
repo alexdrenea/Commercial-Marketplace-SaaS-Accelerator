@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Microsoft.Marketplace.SaasKit.Client.DataAccess.Services;
 
 namespace SaaS.SDK.PublisherSolution.Controllers
 {
@@ -32,7 +33,12 @@ namespace SaaS.SDK.PublisherSolution.Controllers
         /// </summary>
         private readonly IEmailTemplateRepository emailTemplateRepository;
 
-        public ApplicationConfigController(IApplicationConfigRepository applicationConfigRepository, ILogger<ApplicationConfigController> logger, IEmailTemplateRepository emailTemplateRepository)
+        public ApplicationConfigController(
+            IApplicationConfigRepository applicationConfigRepository,
+            CurrentUserComponent currentUserComponent,
+            ILogger<ApplicationConfigController> logger, 
+            IEmailTemplateRepository emailTemplateRepository) 
+        :base(currentUserComponent)
         {
             this.appConfigRepository = applicationConfigRepository;
             this.emailTemplateRepository = emailTemplateRepository;

@@ -209,6 +209,7 @@ namespace Microsoft.Marketplace.Saas.Web
             services.AddScoped<ISchedulerFrequencyRepository, SchedulerFrequencyRepository>();
             services.AddScoped<IMeteredPlanSchedulerManagementRepository, MeteredPlanSchedulerManagementRepository>();
             services.AddScoped<ISchedulerManagerViewRepository, SchedulerManagerViewRepository>();
+            services.AddScoped<CurrentUserComponent>();
         }
     }
 }

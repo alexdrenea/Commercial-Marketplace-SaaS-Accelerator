@@ -13,6 +13,7 @@
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Entities;
     using Microsoft.AspNetCore.Mvc.Rendering;
     using System.Web;
+    using Microsoft.Marketplace.SaasKit.Client.DataAccess.Services;
 
     /// <summary>
     /// Scheduler Controller.
@@ -56,22 +57,25 @@
         /// <param name="offerAttributeRepository">The offer attribute repository.</param>
         /// <param name="offerRepository">The offer repository.</param>
         /// <param name="logger">The logger.</param>
-        public SchedulerController(ISubscriptionsRepository subscriptionRepository, 
-                                   IMeteredDimensionsRepository meteredRepository,
-                                   ISchedulerFrequencyRepository frequencyRepository, 
-                                   IPlansRepository plansRepository,
-                                   IMeteredPlanSchedulerManagementRepository schedulerRepository,
-                                   ISchedulerManagerViewRepository schedulerViewRepository, 
-                                   IUsersRepository usersRepository, 
-                                   ILogger<SchedulerController> logger, 
-                                   ISubscriptionUsageLogsRepository subscriptionUsageLogsRepository)
-
+        public SchedulerController(
+            CurrentUserComponent currentUserComponent,
+            ISubscriptionsRepository subscriptionRepository, 
+            IMeteredDimensionsRepository meteredRepository,
+            ISchedulerFrequencyRepository frequencyRepository, 
+            IPlansRepository plansRepository,
+            IMeteredPlanSchedulerManagementRepository schedulerRepository,
+            ISchedulerManagerViewRepository schedulerViewRepository, 
+            IUsersRepository usersRepository, 
+            ILogger<SchedulerController> logger, 
+            ISubscriptionUsageLogsRepository subscriptionUsageLogsRepository)
+            :base(currentUserComponent)
         {
             this.usersRepository= usersRepository;
             this.logger = logger;
             this.meteredRepository = meteredRepository;
             this.schedulerService = new MeteredPlanSchedulerManagementService(frequencyRepository, schedulerRepository, schedulerViewRepository,subscriptionUsageLogsRepository);
-            this.subscriptionService = new SubscriptionService(subscriptionRepository,plansRepository);
+            this.subscriptionService = new SubscriptionService(subscriptionRepository, currentUserComponent, plansRepository);
+
         }
 
         /// <summary>
@@ -85,7 +89,6 @@
             {
                 List<SchedulerManagerViewModel> getAllSchedulerManagerViewData = new List<SchedulerManagerViewModel>();
                 this.TempData["ShowWelcomeScreen"] = "True";
-                var currentUserDetail = this.usersRepository.GetPartnerDetailFromEmail(this.CurrentUserEmailAddress);
 
                 getAllSchedulerManagerViewData = this.schedulerService.GetAllSchedulerManagerList();
 
@@ -106,7 +109,6 @@
                 SchedulerUsageViewModel schedulerUsageViewModel = new SchedulerUsageViewModel();
                 
                 this.TempData["ShowWelcomeScreen"] = "True";
-                var currentUserDetail = this.usersRepository.GetPartnerDetailFromEmail(this.CurrentUserEmailAddress);
                 var allActiveMeteredSubscriptions = this.subscriptionService.GetActiveSubscriptionsWithMeteredPlan();
                 List<SchedulerFrequencyModel> getAllFrequency = this.schedulerService.GetAllFrequency();
 

@@ -7,9 +7,11 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.Services
     using System.Linq;
     using System.Text.Json;
     using global::Marketplace.SaaS.Accelerator.Services.Helpers;
+    using Microsoft.Marketplace.SaaS.Models;
     using Microsoft.Marketplace.SaaS.SDK.Services.Models;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Contracts;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Entities;
+    using Microsoft.Marketplace.SaasKit.Client.DataAccess.Services;
 
     /// <summary>
     /// Subscriptions Service.
@@ -26,16 +28,22 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.Services
         /// </summary>
         private IPlansRepository planRepository;
 
+        private CurrentUserComponent currentUserComponent;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="SubscriptionService"/> class.
         /// </summary>
         /// <param name="subscriptionRepo">The subscription repo.</param>
         /// <param name="planRepository">The plan repository.</param>
         /// <param name="currentUserId">The current user identifier.</param>
-        public SubscriptionService(ISubscriptionsRepository subscriptionRepo, IPlansRepository planRepository, int currentUserId = 0)
+        public SubscriptionService(
+            ISubscriptionsRepository subscriptionRepo, 
+            CurrentUserComponent currentUserComponent,
+            IPlansRepository planRepository)
         {
             this.subscriptionRepository = subscriptionRepo;
             this.planRepository = planRepository;
+            this.currentUserComponent = currentUserComponent;
         }
 
 
@@ -44,29 +52,33 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.Services
         /// </summary>
         /// <param name="subscriptionDetail">The subscription detail.</param>
         /// <returns>Subscription Id.</returns>
-        public int AddSubscription(SubscriptionResult subscriptionDetail, UserModel currentUser, int customerUserId = 0)
+        public int AddSubscription(SubscriptionResult subscriptionDetail, int customerUserId = 0)
         {
-            var isActive = this.IsSubscriptionDeleted(Convert.ToString(subscriptionDetail.SaasSubscriptionStatus));
-            Subscriptions newSubscription = new Subscriptions()
+            if (subscriptionDetail == null) 
+                return -1;
+
+            var currentTime = DateTime.Now;
+            var newSubscription = new Subscriptions()
             {
                 Id = 0,
                 AmpplanId = subscriptionDetail.PlanId,
                 Ampquantity = subscriptionDetail.Quantity,
                 AmpsubscriptionId = subscriptionDetail.Id,
-                CreateBy = currentUser.UserId,
-                CreateDate = DateTime.Now,
-                IsActive = isActive,
-                ModifyDate = DateTime.Now,
+                CreateBy = currentUserComponent.UserId,
+                CreateDate = currentTime,
+                IsActive = IsSubscriptionDeleted(subscriptionDetail.SaasSubscriptionStatus.ToString()),
+                ModifyDate = currentTime,
                 Name = subscriptionDetail.Name,
                 SubscriptionStatus = Convert.ToString(subscriptionDetail.SaasSubscriptionStatus),
-                UserId = customerUserId == 0 ? currentUser.UserId : customerUserId,
+                UserId = customerUserId == 0 ? currentUserComponent.UserId : customerUserId,
                 PurchaserEmail = subscriptionDetail.Purchaser.EmailId,
                 PurchaserTenantId = subscriptionDetail.Purchaser.TenantId,
             };
-            return this.subscriptionRepository.Save(newSubscription);
+            var subscriptionId = this.subscriptionRepository.Save(newSubscription);
+            return subscriptionId;
         }
 
-       
+
         public List<SubscriptionResultExtension> GetAll(bool includeUnsubscribed = true)
         {
             var allSubscriptions = this.subscriptionRepository.Get().ToList();
@@ -287,7 +299,7 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.Services
         /// <returns> check if subscription deleted.</returns>
         private bool IsSubscriptionDeleted(string status)
         {
-            return SubscriptionStatusEnum.Unsubscribed.ToString().Equals(status, StringComparison.InvariantCultureIgnoreCase);
+            return SaaS.Models.SubscriptionStatusEnum.Unsubscribed.ToString().Equals(status, StringComparison.InvariantCultureIgnoreCase);
         }
 
     }

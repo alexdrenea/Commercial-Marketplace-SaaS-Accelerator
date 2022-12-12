@@ -6,7 +6,8 @@
     using Microsoft.Extensions.Logging;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Contracts;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Entities;
-    using Microsoft.Marketplace.SaaS.SDK.Services.Utilities;   
+    using Microsoft.Marketplace.SaaS.SDK.Services.Utilities;
+    using Microsoft.Marketplace.SaasKit.Client.DataAccess.Services;
 
     /// <summary>
     /// KnownUsers Controller.
@@ -23,7 +24,7 @@
         /// <param name = "knownUsersRepository" > The known users repository.</param>
         /// <param name="logger">The logger.</param>
 
-        public KnownUsersController(IKnownUsersRepository knownUsersRepository, ILogger<OffersController> logger)
+        public KnownUsersController(IKnownUsersRepository knownUsersRepository, CurrentUserComponent currentUserComponent, ILogger<OffersController> logger):base(currentUserComponent) 
         {
             this.knownUsersRepository = knownUsersRepository;
             this.logger = logger;

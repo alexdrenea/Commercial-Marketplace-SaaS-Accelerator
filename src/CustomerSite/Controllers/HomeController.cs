@@ -23,6 +23,7 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
     using Microsoft.Marketplace.SaaS.SDK.Services.Utilities;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Contracts;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Entities;
+    using Microsoft.Marketplace.SaasKit.Client.DataAccess.Services;
 
     /// <summary>Home Controller.</summary>
     /// <seealso cref="BaseController"/>
@@ -82,6 +83,7 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
         /// <param name="offersAttributeRepository">The offers attribute repository.</param>
         public HomeController(
                         SaaSApiClientConfiguration saaSApiClientConfiguration,
+                        CurrentUserComponent currentUserComponent,
 
                         IFulfillmentApiService fulfillApiService,
                         IEmailService emailService,
@@ -103,7 +105,7 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
                         UnsubscribeStatusHandler notificationStatusHandlers,
 
                         ILogger<HomeController> logger
-            )
+            ):base(currentUserComponent)
         {
             this.saaSApiClientConfiguration = saaSApiClientConfiguration;
 
@@ -171,34 +173,20 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
                 throw new Exception("FulfillmentAPI.ResolveAsync failed. Check error logs for more details.");
             }
 
-            var currentUser = this.userService.AddUser(this.GetCurrentUserDetail());
-            var offerId = this.offerService.AddOffer(newSubscription.OfferId, currentUser.UserId);
+            var offerId = this.offerService.AddOffer(newSubscription.OfferId, _currentUserComponent.UserId);
 
             var subscriptionPlanDetail = await this.fulfillApiService.GetAllPlansForSubscriptionAsync(newSubscription.SubscriptionId, offerId).ConfigureAwait(false);
             this.planService.Add(subscriptionPlanDetail.ToArray());
 
             var currentPlan = this.planService.GetPlanById(newSubscription.PlanId, offerId);
             var subscriptionData = await this.fulfillApiService.GetSubscriptionByIdAsync(newSubscription.SubscriptionId).ConfigureAwait(false);
-            var subscribeId = this.subscriptionService.AddSubscription(subscriptionData, currentUser, currentUser.UserId);
-            if (subscribeId > 0 && subscriptionData.SaasSubscriptionStatus == SaaS.SDK.Services.Models.SubscriptionStatusEnum.PendingFulfillmentStart)
-            {
-                SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
-                {
-                    Attribute = Convert.ToString(SubscriptionLogAttributes.Status),
-                    SubscriptionId = subscribeId,
-                    NewValue = SaaS.SDK.Services.Models.SubscriptionStatusEnum.PendingFulfillmentStart.ToString(),
-                    OldValue = "None",
-                    CreateBy = currentUser.UserId,
-                    CreateDate = DateTime.Now,
-                };
-                this.subscriptionLogRepository.Save(auditLog);
-            }
+            var subscriptionId = this.subscriptionService.AddSubscription(subscriptionData, _currentUserComponent.UserId);
 
             var subscriptionExtension = this.subscriptionService.GetBySubscriptionId(newSubscription.SubscriptionId, true);
             subscriptionExtension.SubscriptionParameters = this.subscriptionService.GetSubscriptionsParametersById(newSubscription.SubscriptionId, subscriptionExtension.GuidPlanId);
             subscriptionExtension.ShowWelcomeScreen = false;
-            subscriptionExtension.CustomerEmailAddress = this.CurrentUserEmailAddress;
-            subscriptionExtension.CustomerName = this.CurrentUserName;
+            subscriptionExtension.CustomerEmailAddress = _currentUserComponent.Email;
+            subscriptionExtension.CustomerName = _currentUserComponent.Name;
             subscriptionExtension.IsAutomaticProvisioningSupported = Convert.ToBoolean(this.applicationConfigService.GetValueByName("IsAutomaticProvisioningSupported"));
 
             return this.View(subscriptionExtension);
@@ -251,7 +239,7 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
 
             this.TempData["ShowWelcomeScreen"] = "True";
             var subscriptionDetail = new SubscriptionViewModel();
-            subscriptionDetail.Subscriptions = this.subscriptionService.GetByCustomerEmail(this.CurrentUserEmailAddress, true).ToList();
+            subscriptionDetail.Subscriptions = this.subscriptionService.GetByCustomerEmail(_currentUserComponent.Email, true).ToList();
             foreach (var subscription in subscriptionDetail.Subscriptions)
             {
                 subscription.IsAutomaticProvisioningSupported = Convert.ToBoolean(this.applicationConfigService.GetValueByName("IsAutomaticProvisioningSupported"));
@@ -283,7 +271,7 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
                 return this.RedirectToAction(nameof(this.Index));
             }
 
-            var subscriptionDetail = this.subscriptionService.GetByCustomerEmail(this.CurrentUserEmailAddress).FirstOrDefault(s => s.Id == subscriptionId);
+            var subscriptionDetail = this.subscriptionService.GetByCustomerEmail(_currentUserComponent.Email).FirstOrDefault(s => s.Id == subscriptionId);
             if (subscriptionDetail == null)
             {
                 logger.LogError($"Subscription with id {subscriptionId} not found.");
@@ -308,7 +296,7 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
                 return this.RedirectToAction(nameof(this.Index));
             }
 
-            var subscriptionDetail = this.subscriptionService.GetByCustomerEmail(this.CurrentUserEmailAddress).FirstOrDefault(s => s.Id == subscriptionId);
+            var subscriptionDetail = this.subscriptionService.GetByCustomerEmail(_currentUserComponent.Email).FirstOrDefault(s => s.Id == subscriptionId);
             return this.View(subscriptionDetail);
         }
 
@@ -324,8 +312,7 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
                 return this.RedirectToAction(nameof(this.Index));
             }
 
-            var subscriptionAudit = new List<SubscriptionAuditLogs>();
-            subscriptionAudit = this.subscriptionLogRepository.GetSubscriptionBySubscriptionId(subscriptionId).ToList();
+            var subscriptionAudit = this.subscriptionLogRepository.GetSubscriptionBySubscriptionId(subscriptionId).ToList();
             return this.View(subscriptionAudit);
         }
 
@@ -345,13 +332,11 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
             }
 
             this.TempData["ShowWelcomeScreen"] = false;
-            var currentUser = this.userService.AddUser(this.GetCurrentUserDetail());
-
             var subscriptionDetail = this.subscriptionService.GetBySubscriptionId(subscriptionId);
             var subscriptionParmeters = this.subscriptionService.GetSubscriptionsParametersById(subscriptionId, subscriptionDetail.GuidPlanId);
             subscriptionDetail.SubscriptionParameters = subscriptionParmeters.Where(s => s.Type.ToLower() == "input").ToList();
-            subscriptionDetail.CustomerEmailAddress = this.CurrentUserEmailAddress;
-            subscriptionDetail.CustomerName = this.CurrentUserName;
+            subscriptionDetail.CustomerEmailAddress = _currentUserComponent.Email;
+            subscriptionDetail.CustomerName = _currentUserComponent.Name;
             subscriptionDetail.IsAutomaticProvisioningSupported = Convert.ToBoolean(this.applicationConfigService.GetValueByName("IsAutomaticProvisioningSupported"));
 
             return this.View("Index", subscriptionDetail);
@@ -378,10 +363,11 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
             if (subscriptionId == default)
             {
                 logger.LogWarning("SubscriptionOperation called with no subscriptionId. Exiting.");
+                return this.RedirectToAction(nameof(this.Index));
             }
 
-            var oldValue = this.subscriptionService.GetByCustomerEmail(this.CurrentUserEmailAddress, true).FirstOrDefault();
-            var currentUser = this.userService.GetUserFromEmailAddress(this.CurrentUserEmailAddress);
+            var oldValue = this.subscriptionService.GetByCustomerEmail(_currentUserComponent.Email, true).FirstOrDefault();
+            var currentUser = this.userService.GetUserFromEmailAddress(_currentUserComponent.Email);
 
             if (operation == "Activate")
             {
@@ -394,24 +380,7 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
                     if (Convert.ToBoolean(this.applicationConfigService.GetValueByName("IsAutomaticProvisioningSupported")))
                     {
                         this.logger.LogInformation("UpdateStateOfSubscription PendingActivation: SubscriptionId: {0} ", subscriptionId);
-                        if (oldValue.SubscriptionStatus.ToString() != SubscriptionStatusEnumExtension.PendingActivation.ToString())
-                        {
-                            this.subscriptionService.UpdateSubscriptionStatus(subscriptionId, SubscriptionStatusEnumExtension.PendingActivation.ToString(), true);
-                            if (oldValue != null)
-                            {
-                                SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
-                                {
-                                    Attribute = Convert.ToString(SubscriptionLogAttributes.Status),
-                                    SubscriptionId = oldValue.SubscribeId,
-                                    NewValue = SubscriptionStatusEnumExtension.PendingActivation.ToString(),
-                                    OldValue = oldValue.SubscriptionStatus.ToString(),
-                                    CreateBy = currentUser.UserId,
-                                    CreateDate = DateTime.Now,
-                                };
-                                this.subscriptionLogRepository.Save(auditLog);
-                            }
-                        }
-
+                        this.subscriptionService.UpdateSubscriptionStatus(subscriptionId, SubscriptionStatusEnumExtension.PendingActivation.ToString(), true);
                         this.pendingActivationStatusHandlers.Process(subscriptionId);
                     }
                     else
@@ -428,20 +397,6 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
             if (operation == "Deactivate")
             {
                 this.subscriptionService.UpdateSubscriptionStatus(subscriptionId, SubscriptionStatusEnumExtension.PendingUnsubscribe.ToString(), true);
-                if (oldValue != null)
-                {
-                    SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
-                    {
-                        Attribute = Convert.ToString(SubscriptionLogAttributes.Status),
-                        SubscriptionId = oldValue.SubscribeId,
-                        NewValue = SubscriptionStatusEnumExtension.PendingUnsubscribe.ToString(),
-                        OldValue = oldValue.SubscriptionStatus.ToString(),
-                        CreateBy = currentUser.UserId,
-                        CreateDate = DateTime.Now,
-                    };
-                    this.subscriptionLogRepository.Save(auditLog);
-                }
-
                 this.unsubscribeStatusHandlers.Process(subscriptionId);
             }
 
@@ -472,7 +427,7 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
             try
             {
                 //initiate change plan
-                var currentUser = this.userService.GetUserFromEmailAddress(this.CurrentUserEmailAddress);
+                var currentUser = this.userService.GetUserFromEmailAddress(_currentUserComponent.Email);
                 var jsonResult = await this.fulfillApiService.ChangePlanForSubscriptionAsync(subscriptionDetail.Id, subscriptionDetail.PlanId).ConfigureAwait(false);
                 var changePlanOperationStatus = OperationStatusEnum.InProgress;
 
@@ -545,7 +500,7 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
             try
             {
                 //initiate change quantity
-                var currentUserId = this.userService.GetUserFromEmailAddress(this.CurrentUserEmailAddress);
+                var currentUserId = this.userService.GetUserFromEmailAddress(_currentUserComponent.Email);
                 var jsonResult = await this.fulfillApiService.ChangeQuantityForSubscriptionAsync(subscriptionDetail.Id, subscriptionDetail.Quantity).ConfigureAwait(false);
                 var changeQuantityOperationStatus = OperationStatusEnum.InProgress;
                 if (jsonResult != null && jsonResult.OperationId != default)
@@ -611,11 +566,10 @@ namespace Microsoft.Marketplace.SaasKit.Client.Controllers
             var subscriptionDetail = new SubscriptionResultExtension();
             this.TempData["ShowWelcomeScreen"] = false;
 
-            var currentUser = this.userService.AddUser(this.GetCurrentUserDetail());
-            subscriptionDetail = this.subscriptionService.GetByCustomerEmail(this.CurrentUserEmailAddress).FirstOrDefault();
+            subscriptionDetail = this.subscriptionService.GetByCustomerEmail(_currentUserComponent.Email).FirstOrDefault();
             subscriptionDetail.ShowWelcomeScreen = false;
-            subscriptionDetail.CustomerEmailAddress = this.CurrentUserEmailAddress;
-            subscriptionDetail.CustomerName = this.CurrentUserName;
+            subscriptionDetail.CustomerEmailAddress = _currentUserComponent.Email;
+            subscriptionDetail.CustomerName = _currentUserComponent.Name;
             subscriptionDetail.SubscriptionParameters = this.subscriptionService.GetSubscriptionsParametersById(subscriptionId, subscriptionDetail.GuidPlanId);
             subscriptionDetail.IsAutomaticProvisioningSupported = Convert.ToBoolean(this.applicationConfigService.GetValueByName("IsAutomaticProvisioningSupported"));
 

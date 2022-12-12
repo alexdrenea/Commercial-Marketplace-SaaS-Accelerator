@@ -77,6 +77,7 @@
             }
             else
             {
+                userDetail.CreatedDate = DateTime.Now;
                 this.context.Users.Add(userDetail);
             }
 

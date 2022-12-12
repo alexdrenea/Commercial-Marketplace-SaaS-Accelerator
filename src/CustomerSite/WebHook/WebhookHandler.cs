@@ -107,14 +107,28 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
         /// <param name="applicationConfigRepository">The application configuration repository.</param>
         /// <param name="emailTemplateRepository">The email template repository.</param>
         /// <param name="planEventsMappingRepository">The plan events mapping repository.</param>
-        public WebHookHandler(IApplicationLogRepository applicationLogRepository, ISubscriptionLogRepository subscriptionsLogRepository, ISubscriptionsRepository subscriptionsRepository, IPlansRepository planRepository, IOfferAttributesRepository offersAttributeRepository, IOffersRepository offersRepository, IFulfillmentApiService fulfillApiService, IUsersRepository usersRepository, ILoggerFactory loggerFactory, IEmailService emailService, IEventsRepository eventsRepository, IApplicationConfigRepository applicationConfigRepository, IEmailTemplateRepository emailTemplateRepository, IPlanEventsMappingRepository planEventsMappingRepository)
+        public WebHookHandler(
+            IApplicationLogRepository applicationLogRepository, 
+            ISubscriptionLogRepository subscriptionsLogRepository, 
+            ISubscriptionsRepository subscriptionsRepository, 
+            IPlansRepository planRepository, 
+            IOfferAttributesRepository offersAttributeRepository, 
+            IOffersRepository offersRepository, 
+            IFulfillmentApiService fulfillApiService, 
+            IUsersRepository usersRepository, 
+            ILoggerFactory loggerFactory, 
+            IEmailService emailService, 
+            IEventsRepository eventsRepository, 
+            IApplicationConfigRepository applicationConfigRepository, 
+            IEmailTemplateRepository emailTemplateRepository, 
+            IPlanEventsMappingRepository planEventsMappingRepository,
+            SubscriptionService subscriptionService)
         {
             this.applicationLogRepository = applicationLogRepository;
             this.subscriptionsRepository = subscriptionsRepository;
             this.planRepository = planRepository;
             this.subscriptionsLogRepository = subscriptionsLogRepository;
             this.applicationLogService = new ApplicationLogService(this.applicationLogRepository);
-            this.subscriptionService = new SubscriptionService(this.subscriptionsRepository, this.planRepository);
             this.emailService = emailService;
             this.loggerFactory = loggerFactory;
             this.usersRepository = usersRepository;
@@ -125,6 +139,7 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
             this.emailTemplateRepository = emailTemplateRepository;
             this.planEventsMappingRepository = planEventsMappingRepository;
             this.offersRepository = offersRepository;
+            this.subscriptionService = subscriptionService;
             this.notificationStatusHandlers = new NotificationStatusHandler(
                                                                         fulfillApiService,
                                                                         planRepository,
@@ -147,24 +162,13 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public async Task ChangePlanAsync(WebhookPayload payload)
         {
-            var oldValue = this.subscriptionService.GetBySubscriptionId(payload.SubscriptionId);
-            SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
-            {
-                Attribute = Convert.ToString(SubscriptionLogAttributes.Plan),
-                SubscriptionId = oldValue?.SubscribeId,
-                OldValue = oldValue?.PlanId,
-                CreateBy = null,
-                CreateDate = DateTime.Now,
-            };
-
             //gets the user setting from appconfig, if key doesnt exist, add to control the behavior.
             //_acceptSubscriptionUpdates should be true and subscription should be in db to accept subscription updates
             var _acceptSubscriptionUpdates = Convert.ToBoolean(this.applicationConfigRepository.GetValueByName(AcceptSubscriptionUpdates));
-            if (_acceptSubscriptionUpdates && oldValue != null)
+            if (_acceptSubscriptionUpdates)
             {
                 this.subscriptionService.UpdateSubscriptionPlan(payload.SubscriptionId, payload.PlanId);
                 await this.applicationLogService.AddApplicationLog("Plan Successfully Changed.").ConfigureAwait(false);
-                auditLog.NewValue = payload.PlanId;
             }
             else
             {
@@ -177,11 +181,7 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
                 }
 
                 await this.applicationLogService.AddApplicationLog("Plan Change Request Rejected Successfully.").ConfigureAwait(false);
-                auditLog.NewValue = oldValue?.PlanId;
             }
-
-            this.subscriptionsLogRepository.Save(auditLog);
-            
             await Task.CompletedTask;
         }
 
@@ -195,24 +195,13 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
         /// <exception cref="NotImplementedException"> Exception.</exception>
         public async Task ChangeQuantityAsync(WebhookPayload payload)
         {
-            var oldValue = this.subscriptionService.GetBySubscriptionId(payload.SubscriptionId);
-            SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
-            {
-                Attribute = Convert.ToString(SubscriptionLogAttributes.Quantity),
-                SubscriptionId = oldValue?.SubscribeId,
-                OldValue = oldValue?.Quantity.ToString(),
-                CreateBy = null,
-                CreateDate = DateTime.Now,
-            };
-
             //gets the user setting from appconfig, if key doesnt exist, add to control the behavior.
             //_acceptSubscriptionUpdates should be true and subscription should be in db to accept subscription updates
             var _acceptSubscriptionUpdates = Convert.ToBoolean(this.applicationConfigRepository.GetValueByName(AcceptSubscriptionUpdates));
-            if (_acceptSubscriptionUpdates && oldValue != null)
+            if (_acceptSubscriptionUpdates)
             {
                 this.subscriptionService.UpdateSubscriptionQuantity(payload.SubscriptionId, payload.Quantity);
                 await this.applicationLogService.AddApplicationLog("Quantity Successfully Changed.").ConfigureAwait(false);
-                auditLog.NewValue = payload.Quantity.ToString();
             }
             else
             {
@@ -225,11 +214,7 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
                 }
 
                 await this.applicationLogService.AddApplicationLog("Quantity Change Request Rejected Successfully.").ConfigureAwait(false);
-                auditLog.NewValue = oldValue?.Quantity.ToString();
             }
-
-            this.subscriptionsLogRepository.Save(auditLog); 
-
             await Task.CompletedTask;
         }
 
@@ -243,25 +228,13 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
         /// <exception cref="NotImplementedException"> Not Implemented Exception. </exception>
         public async Task ReinstatedAsync(WebhookPayload payload)
         {
-            var oldValue = this.subscriptionService.GetBySubscriptionId(payload.SubscriptionId);
-            SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
-            {
-                Attribute = Convert.ToString(SubscriptionLogAttributes.Status),
-                SubscriptionId = oldValue?.SubscribeId,
-                OldValue = Convert.ToString(oldValue?.SubscriptionStatus),
-                CreateBy = null,
-                CreateDate = DateTime.Now,
-            };
-
             //gets the user setting from appconfig, if key doesnt exist, add to control the behavior.
             //_acceptSubscriptionUpdates should be true and subscription should be in db to accept subscription updates
             var _acceptSubscriptionUpdates = Convert.ToBoolean(this.applicationConfigRepository.GetValueByName(AcceptSubscriptionUpdates));
-            if (_acceptSubscriptionUpdates && oldValue != null)
+            if (_acceptSubscriptionUpdates)
             {
                 this.subscriptionService.UpdateSubscriptionStatus(payload.SubscriptionId, SubscriptionStatusEnumExtension.Subscribed.ToString(), false);
                 await this.applicationLogService.AddApplicationLog("Reinstated Successfully.").ConfigureAwait(false);
-                auditLog.NewValue = Convert.ToString(SubscriptionStatusEnum.Subscribed);
-                
             }
             else
             {
@@ -274,11 +247,7 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
                 }
 
                 await this.applicationLogService.AddApplicationLog("Reinstate Change Request Rejected Successfully.").ConfigureAwait(false);
-                auditLog.NewValue = Convert.ToString(oldValue?.SubscriptionStatus);
             }
-
-            this.subscriptionsLogRepository.Save(auditLog); 
-
             await Task.CompletedTask;
         }
 
@@ -302,24 +271,8 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
         /// <exception cref="NotImplementedException"> Implemented Exception.</exception>
         public async Task SuspendedAsync(WebhookPayload payload)
         {
-            var oldValue = this.subscriptionService.GetBySubscriptionId(payload.SubscriptionId);
             this.subscriptionService.UpdateSubscriptionStatus(payload.SubscriptionId, SubscriptionStatusEnumExtension.Suspend.ToString(), false);
             await this.applicationLogService.AddApplicationLog("Offer Successfully Suspended.").ConfigureAwait(false);
-
-            if (oldValue != null)
-            {
-                SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
-                {
-                    Attribute = Convert.ToString(SubscriptionLogAttributes.Status),
-                    SubscriptionId = oldValue.SubscribeId,
-                    NewValue = Convert.ToString(SubscriptionStatusEnum.Suspended),
-                    OldValue = Convert.ToString(oldValue.SubscriptionStatus),
-                    CreateBy = null,
-                    CreateDate = DateTime.Now,
-                };
-                this.subscriptionsLogRepository.Save(auditLog);
-            }
-
             await Task.CompletedTask;
         }
 
@@ -330,24 +283,7 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public async Task UnsubscribedAsync(WebhookPayload payload)
         {
-            var oldValue = this.subscriptionService.GetBySubscriptionId(payload.SubscriptionId);
             this.subscriptionService.UpdateSubscriptionStatus(payload.SubscriptionId, SubscriptionStatusEnumExtension.Unsubscribed.ToString(), false);
-            await this.applicationLogService.AddApplicationLog("Offer Successfully UnSubscribed.").ConfigureAwait(false);
-
-            if (oldValue != null)
-            {
-                SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
-                {
-                    Attribute = Convert.ToString(SubscriptionLogAttributes.Status),
-                    SubscriptionId = oldValue.SubscribeId,
-                    NewValue = Convert.ToString(SubscriptionStatusEnum.Unsubscribed),
-                    OldValue = Convert.ToString(oldValue.SubscriptionStatus),
-                    CreateBy = null,
-                    CreateDate = DateTime.Now,
-                };
-                this.subscriptionsLogRepository.Save(auditLog);
-            }
-
             this.notificationStatusHandlers.Process(payload.SubscriptionId);
 
             await Task.CompletedTask;

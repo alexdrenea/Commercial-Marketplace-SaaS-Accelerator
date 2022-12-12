@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel.DataAnnotations;
     using System.Linq;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Context;
@@ -20,6 +21,11 @@
         private readonly SaasKitContext context;
 
         /// <summary>
+        /// Scoped service that contains information about the loggedin user making the top line request for this call.
+        /// </summary>
+        private readonly ISubscriptionLogRepository _subscriptionLogRepository;
+
+        /// <summary>
         /// The disposed.
         /// </summary>
         private bool disposed = false;
@@ -28,9 +34,10 @@
         /// Initializes a new instance of the <see cref="SubscriptionsRepository" /> class.
         /// </summary>
         /// <param name="context">The this.context.</param>
-        public SubscriptionsRepository(SaasKitContext context)
+        public SubscriptionsRepository(SaasKitContext context, ISubscriptionLogRepository subscriptionLogRepository)
         {
             this.context = context;
+            this._subscriptionLogRepository = subscriptionLogRepository;
         }
 
         /// <summary>
@@ -43,11 +50,22 @@
             var existingSubscriptions = this.context.Subscriptions.Where(s => s.AmpsubscriptionId == subscriptionDetails.AmpsubscriptionId).FirstOrDefault();
             if (existingSubscriptions != null)
             {
+                var oldStatus = existingSubscriptions.SubscriptionStatus;
+                var oldPlanId = existingSubscriptions.AmpplanId;
+                var oldQuantity = existingSubscriptions.Ampquantity;
                 existingSubscriptions.SubscriptionStatus = subscriptionDetails.SubscriptionStatus;
                 existingSubscriptions.AmpplanId = subscriptionDetails.AmpplanId;
                 existingSubscriptions.Ampquantity = subscriptionDetails.Ampquantity;
                 this.context.Subscriptions.Update(existingSubscriptions);
                 this.context.SaveChanges();
+
+                if (oldStatus != existingSubscriptions.SubscriptionStatus)
+                    _subscriptionLogRepository.AddAsync(subscriptionDetails.Id, "Status", existingSubscriptions.SubscriptionStatus, oldStatus).GetAwaiter().GetResult();
+                if (oldPlanId != existingSubscriptions.AmpplanId)
+                    _subscriptionLogRepository.AddAsync(subscriptionDetails.Id, "Plan", existingSubscriptions.AmpplanId, oldPlanId).GetAwaiter().GetResult();
+                if (oldQuantity != existingSubscriptions.Ampquantity)
+                    _subscriptionLogRepository.AddAsync(subscriptionDetails.Id, "Quantity", existingSubscriptions.Ampquantity.ToString(), oldQuantity.ToString()).GetAwaiter().GetResult();
+
                 return existingSubscriptions.Id;
             }
             else
@@ -68,14 +86,18 @@
         public void UpdateStatusForSubscription(Guid subscriptionId, string subscriptionStatus, bool isActive)
         {
             var existingSubscription = this.context.Subscriptions.Where(s => s.AmpsubscriptionId == subscriptionId).FirstOrDefault();
-            if (existingSubscription != null)
-            {
-                existingSubscription.IsActive = isActive;
-                existingSubscription.SubscriptionStatus = subscriptionStatus;
-                this.context.Subscriptions.Update(existingSubscription);
-            }
+            var oldStatus = existingSubscription?.SubscriptionStatus;
+       
+            if (existingSubscription == null || oldStatus == subscriptionStatus)
+                return;
 
-            this.context.SaveChanges();
+            existingSubscription.IsActive = isActive;
+            existingSubscription.SubscriptionStatus = subscriptionStatus;
+
+            context.Subscriptions.Update(existingSubscription);
+            context.SaveChanges();
+
+            _subscriptionLogRepository.AddAsync(existingSubscription.Id, "Status", existingSubscription.SubscriptionStatus, oldStatus).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -86,13 +108,15 @@
         public void UpdatePlanForSubscription(Guid subscriptionId, string planId)
         {
             var existingSubscription = this.context.Subscriptions.Where(s => s.AmpsubscriptionId == subscriptionId).FirstOrDefault();
-            if (existingSubscription != null)
-            {
-                existingSubscription.AmpplanId = planId;
-                this.context.Subscriptions.Update(existingSubscription);
-            }
+            var oldPlanId = existingSubscription?.AmpplanId;
+            if (existingSubscription == null || oldPlanId == planId)
+                return;
 
+            existingSubscription.AmpplanId = planId;
+            this.context.Subscriptions.Update(existingSubscription);
             this.context.SaveChanges();
+
+            _subscriptionLogRepository.AddAsync(existingSubscription.Id, "Plan", existingSubscription.AmpplanId, oldPlanId).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -103,13 +127,16 @@
         public void UpdateQuantityForSubscription(Guid subscriptionId, int quantity)
         {
             var existingSubscription = this.context.Subscriptions.Where(s => s.AmpsubscriptionId == subscriptionId).FirstOrDefault();
-            if (existingSubscription != null)
-            {
-                existingSubscription.Ampquantity = quantity;
-                this.context.Subscriptions.Update(existingSubscription);
-            }
+            var oldQuantity = existingSubscription?.Ampquantity;
+            
+            if (existingSubscription == null || oldQuantity == quantity)
+                return;
 
-            this.context.SaveChanges();
+            existingSubscription.Ampquantity = quantity;
+            context.Subscriptions.Update(existingSubscription);
+            context.SaveChanges();
+
+            _subscriptionLogRepository.AddAsync(existingSubscription.Id, "Quantity", existingSubscription.Ampquantity.ToString(), oldQuantity.ToString()).GetAwaiter().GetResult();
         }
 
         /// <summary>

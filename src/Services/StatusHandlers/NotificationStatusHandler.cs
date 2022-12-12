@@ -119,7 +119,7 @@
             this.emailTemplateRepository = emailTemplateRepository;
             this.subscriptionRepository = subscriptionRepository;
             this.planRepository = planRepository;
-            this.subscriptionService = new SubscriptionService(this.subscriptionRepository, this.planRepository);
+            //this.subscriptionService = new SubscriptionService(this.subscriptionRepository, this.planRepository);
             this.offersRepository = offersRepository;
             this.emailService = emailService;
             this.emailHelper = new EmailHelper(applicationConfigRepository, subscriptionRepository, emailTemplateRepository, planEventsMappingRepository, eventsRepository);

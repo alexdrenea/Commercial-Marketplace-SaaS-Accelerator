@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading.Tasks;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Context;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Contracts;
@@ -20,12 +21,19 @@
         private readonly SaasKitContext context;
 
         /// <summary>
+        /// Scoped service that contains information about the loggedin user making the top line request for this call.
+        /// </summary>
+        private readonly CurrentUserComponent _currentUserComponent;
+       
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="SubscriptionLogRepository"/> class.
         /// </summary>
         /// <param name="context">The this.context.</param>
-        public SubscriptionLogRepository(SaasKitContext context)
+        public SubscriptionLogRepository(SaasKitContext context, CurrentUserComponent currentUserComponent)
         {
             this.context = context;
+            _currentUserComponent = currentUserComponent;   
         }
 
         /// <summary>
@@ -39,6 +47,24 @@
             this.context.SaveChanges();
             return subscriptionLogs.Id;
         }
+
+        public async Task<SubscriptionAuditLogs> AddAsync(int subscriptionId, string property, string newValue, string oldValue = null)
+        {
+            var newLog = new SubscriptionAuditLogs()
+            {
+                Attribute = property,
+                SubscriptionId = subscriptionId,
+                NewValue = newValue,
+                OldValue = oldValue ?? "N/A",
+                CreateBy = _currentUserComponent.UserId,
+                CreateDate = DateTime.Now,
+            };
+            context.SubscriptionAuditLogs.Add(newLog);
+            await context.SaveChangesAsync();
+
+            return newLog;
+        }
+
 
         /// <summary>
         /// Gets this instance.

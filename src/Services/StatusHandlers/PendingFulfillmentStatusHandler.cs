@@ -68,47 +68,22 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.StatusHandlers
         /// <param name="subscriptionID">The subscription identifier.</param>
         public override void Process(Guid subscriptionID)
         {
-            this.logger?.LogInformation("PendingActivationStatusHandler {0}", subscriptionID);
+            this.logger?.LogInformation("PendingFulfilmentStatusHandler: SubscriptionID={0}", subscriptionID);
             var subscription = this.GetSubscriptionById(subscriptionID);
-            this.logger?.LogInformation("Result subscription : {0}", JsonSerializer.Serialize(subscription.AmpplanId));
-            this.logger?.LogInformation("Get User");
-            var userdetails = this.GetUserById(subscription.UserId);
+            this.logger?.LogInformation("Result subscription: PlanId={0}", JsonSerializer.Serialize(subscription.AmpplanId));
 
             if (subscription.SubscriptionStatus == SubscriptionStatusEnumExtension.PendingFulfillmentStart.ToString())
             {
                 try
                 {
                     this.subscriptionsRepository.UpdateStatusForSubscription(subscriptionID, SubscriptionStatusEnumExtension.PendingActivation.ToString(), true);
-
-                    SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
-                    {
-                        Attribute = SubscriptionLogAttributes.Status.ToString(),
-                        SubscriptionId = subscription.Id,
-                        NewValue = SubscriptionStatusEnumExtension.PendingActivation.ToString(),
-                        OldValue = SubscriptionStatusEnumExtension.PendingFulfillmentStart.ToString(),
-                        CreateBy = userdetails.UserId,
-                        CreateDate = DateTime.Now,
-                    };
-                    this.subscriptionLogRepository.Save(auditLog);
                 }
                 catch (Exception ex)
                 {
                     string errorDescription = string.Format("Exception: {0} :: Innser Exception:{1}", ex.Message, ex.InnerException);
-
-                    this.logger?.LogInformation(errorDescription);
+                    logger?.LogInformation(errorDescription);
 
                     this.subscriptionsRepository.UpdateStatusForSubscription(subscriptionID, SubscriptionStatusEnumExtension.PendingActivation.ToString(), true);
-
-                    SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
-                    {
-                        Attribute = SubscriptionLogAttributes.Status.ToString(),
-                        SubscriptionId = subscription.Id,
-                        NewValue = SubscriptionStatusEnumExtension.PendingActivation.ToString(),
-                        OldValue = subscription.SubscriptionStatus,
-                        CreateBy = userdetails.UserId,
-                        CreateDate = DateTime.Now,
-                    };
-                    this.subscriptionLogRepository.Save(auditLog);
                 }
             }
         }

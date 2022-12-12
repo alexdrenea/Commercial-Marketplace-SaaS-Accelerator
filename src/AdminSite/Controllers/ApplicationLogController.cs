@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.Marketplace.SaasKit.Client.DataAccess.Services;
 
 namespace SaaS.SDK.PublisherSolution.Controllers
 {
@@ -21,7 +22,7 @@ namespace SaaS.SDK.PublisherSolution.Controllers
 
         private readonly IApplicationLogRepository appLogRepository;
 
-        public ApplicationLogController(IApplicationLogRepository applicationLogRepository, ILogger<ApplicationLogController> logger)
+        public ApplicationLogController(IApplicationLogRepository applicationLogRepository, CurrentUserComponent currentUserComponent, ILogger<ApplicationLogController> logger):base(currentUserComponent)
         {
             this.appLogRepository = applicationLogRepository;
             this.logger = logger;

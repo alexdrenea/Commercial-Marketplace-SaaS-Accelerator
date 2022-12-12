@@ -10,6 +10,7 @@
     using Microsoft.Marketplace.SaaS.SDK.Services.Services;
     using Microsoft.Marketplace.SaaS.SDK.Services.Utilities;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Contracts;
+    using Microsoft.Marketplace.SaasKit.Client.DataAccess.Services;
 
     /// <summary>
     /// Plans Controller.
@@ -50,7 +51,16 @@
         /// <param name="offerAttributeRepository">The offer attribute repository.</param>
         /// <param name="offerRepository">The offer repository.</param>
         /// <param name="logger">The logger.</param>
-        public PlansController(ISubscriptionsRepository subscriptionRepository, IUsersRepository usersRepository, IApplicationConfigRepository applicationConfigRepository, IPlansRepository plansRepository, IOfferAttributesRepository offerAttributeRepository, IOffersRepository offerRepository, ILogger<PlansController> logger)
+        public PlansController(
+            CurrentUserComponent currentUserComponent,
+            ISubscriptionsRepository subscriptionRepository, 
+            IUsersRepository usersRepository, 
+            IApplicationConfigRepository applicationConfigRepository, 
+            IPlansRepository plansRepository, 
+            IOfferAttributesRepository offerAttributeRepository, 
+            IOffersRepository offerRepository, 
+            ILogger<PlansController> logger)
+        :base(currentUserComponent)
         {
             this.subscriptionRepository = subscriptionRepository;
             this.usersRepository = usersRepository;
@@ -73,8 +83,6 @@
             {
                 List<PlansModel> getAllPlansData = new List<PlansModel>();
                 this.TempData["ShowWelcomeScreen"] = "True";
-                var currentUserDetail = this.usersRepository.GetPartnerDetailFromEmail(this.CurrentUserEmailAddress);
-
 
                 getAllPlansData = this.plansService.GetPlans();
 
@@ -101,7 +109,6 @@
             {
                 PlansModel plans = new PlansModel();
                 this.TempData["ShowWelcomeScreen"] = "True";
-                var currentUserDetail = this.usersRepository.GetPartnerDetailFromEmail(this.CurrentUserEmailAddress);
                 plans = this.plansService.GetPlanDetailByPlanGuId(planGuId);
                 return this.PartialView(plans);
             }
@@ -125,7 +132,6 @@
             this.logger.LogInformation("Plans Controller / PlanDetails:  plans {0}", JsonSerializer.Serialize(plans));
             try
             {
-                var currentUserDetail = this.usersRepository.GetPartnerDetailFromEmail(this.CurrentUserEmailAddress);
                 if (plans != null)
                 {
                     if (plans.PlanAttributes != null)
@@ -133,7 +139,7 @@
                         var inputAtttributes = plans.PlanAttributes.Where(s => s.Type.ToLower() == "input").ToList();
                         foreach (var attributes in inputAtttributes)
                         {
-                            attributes.UserId = currentUserDetail.UserId;
+                            attributes.UserId = _currentUserComponent.UserId;
                             this.plansService.SavePlanAttributes(attributes);
                         }
                     }
@@ -142,7 +148,7 @@
                     {
                         foreach (var events in plans.PlanEvents)
                         {
-                            events.UserId = currentUserDetail.UserId;
+                            events.UserId = _currentUserComponent.UserId;
                             this.plansService.SavePlanEvents(events);
                         }
                     }
