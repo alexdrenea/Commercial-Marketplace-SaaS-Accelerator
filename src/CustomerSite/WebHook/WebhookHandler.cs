@@ -147,7 +147,7 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public async Task ChangePlanAsync(WebhookPayload payload)
         {
-            var oldValue = this.subscriptionService.GetSubscriptionsBySubscriptionId(payload.SubscriptionId);
+            var oldValue = this.subscriptionService.GetBySubscriptionId(payload.SubscriptionId);
             SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
             {
                 Attribute = Convert.ToString(SubscriptionLogAttributes.Plan),
@@ -195,7 +195,7 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
         /// <exception cref="NotImplementedException"> Exception.</exception>
         public async Task ChangeQuantityAsync(WebhookPayload payload)
         {
-            var oldValue = this.subscriptionService.GetSubscriptionsBySubscriptionId(payload.SubscriptionId);
+            var oldValue = this.subscriptionService.GetBySubscriptionId(payload.SubscriptionId);
             SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
             {
                 Attribute = Convert.ToString(SubscriptionLogAttributes.Quantity),
@@ -243,7 +243,7 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
         /// <exception cref="NotImplementedException"> Not Implemented Exception. </exception>
         public async Task ReinstatedAsync(WebhookPayload payload)
         {
-            var oldValue = this.subscriptionService.GetSubscriptionsBySubscriptionId(payload.SubscriptionId);
+            var oldValue = this.subscriptionService.GetBySubscriptionId(payload.SubscriptionId);
             SubscriptionAuditLogs auditLog = new SubscriptionAuditLogs()
             {
                 Attribute = Convert.ToString(SubscriptionLogAttributes.Status),
@@ -258,7 +258,7 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
             var _acceptSubscriptionUpdates = Convert.ToBoolean(this.applicationConfigRepository.GetValueByName(AcceptSubscriptionUpdates));
             if (_acceptSubscriptionUpdates && oldValue != null)
             {
-                this.subscriptionService.UpdateStateOfSubscription(payload.SubscriptionId, SubscriptionStatusEnumExtension.Subscribed.ToString(), false);
+                this.subscriptionService.UpdateSubscriptionStatus(payload.SubscriptionId, SubscriptionStatusEnumExtension.Subscribed.ToString(), false);
                 await this.applicationLogService.AddApplicationLog("Reinstated Successfully.").ConfigureAwait(false);
                 auditLog.NewValue = Convert.ToString(SubscriptionStatusEnum.Subscribed);
                 
@@ -302,8 +302,8 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
         /// <exception cref="NotImplementedException"> Implemented Exception.</exception>
         public async Task SuspendedAsync(WebhookPayload payload)
         {
-            var oldValue = this.subscriptionService.GetSubscriptionsBySubscriptionId(payload.SubscriptionId);
-            this.subscriptionService.UpdateStateOfSubscription(payload.SubscriptionId, SubscriptionStatusEnumExtension.Suspend.ToString(), false);
+            var oldValue = this.subscriptionService.GetBySubscriptionId(payload.SubscriptionId);
+            this.subscriptionService.UpdateSubscriptionStatus(payload.SubscriptionId, SubscriptionStatusEnumExtension.Suspend.ToString(), false);
             await this.applicationLogService.AddApplicationLog("Offer Successfully Suspended.").ConfigureAwait(false);
 
             if (oldValue != null)
@@ -330,8 +330,8 @@ namespace Microsoft.Marketplace.SaaS.SDK.Services.WebHook
         /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public async Task UnsubscribedAsync(WebhookPayload payload)
         {
-            var oldValue = this.subscriptionService.GetSubscriptionsBySubscriptionId(payload.SubscriptionId);
-            this.subscriptionService.UpdateStateOfSubscription(payload.SubscriptionId, SubscriptionStatusEnumExtension.Unsubscribed.ToString(), false);
+            var oldValue = this.subscriptionService.GetBySubscriptionId(payload.SubscriptionId);
+            this.subscriptionService.UpdateSubscriptionStatus(payload.SubscriptionId, SubscriptionStatusEnumExtension.Unsubscribed.ToString(), false);
             await this.applicationLogService.AddApplicationLog("Offer Successfully UnSubscribed.").ConfigureAwait(false);
 
             if (oldValue != null)

@@ -49,17 +49,17 @@
         /// <returns>
         /// Current Logged User Email.
         /// </returns>
-        public PartnerDetailViewModel GetCurrentUserDetail()
+        public UserModel GetCurrentUserDetail()
         {
             if (this.HttpContext != null && this.HttpContext.User.Identity.IsAuthenticated)
             {
-                PartnerDetailViewModel partnerDetail = new PartnerDetailViewModel();
+                UserModel partnerDetail = new UserModel();
                 partnerDetail.FullName = this.CurrentUserName;
                 partnerDetail.EmailAddress = this.CurrentUserEmailAddress;
                 return partnerDetail;
             }
 
-            return new PartnerDetailViewModel();
+            return new UserModel();
         }
 
         /// <summary>

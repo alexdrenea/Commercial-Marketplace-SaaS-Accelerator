@@ -26,6 +26,7 @@ namespace Microsoft.Marketplace.SaasKit.Client
     using Microsoft.Marketplace.SaaS;
     using Microsoft.AspNetCore.Authentication;
     using System.IdentityModel.Tokens.Jwt;
+    using Microsoft.Marketplace.SaaS.SDK.Services.StatusHandlers;
 
     /// <summary>
     /// Defines the <see cref="Startup" />.
@@ -52,12 +53,6 @@ namespace Microsoft.Marketplace.SaasKit.Client
         /// <param name="services">The services<see cref="IServiceCollection"/>.</param>
         public void ConfigureServices(IServiceCollection services)
         {
-            var loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder
-                    .AddConsole();
-            });
-
             services.Configure<CookiePolicyOptions>(options =>
             {
                 // This lambda determines whether user consent for non-essential cookies is needed for a given request.
@@ -108,6 +103,24 @@ namespace Microsoft.Marketplace.SaasKit.Client
                 .AddSingleton<SaaSApiClientConfiguration>(config);
 
             services
+                .AddScoped<LoggerActionFilter>()
+                .AddScoped<ExceptionHandlerAttribute>()
+                .AddScoped<IEmailService, SMTPEmailService>()
+                .AddScoped<ApplicationLogService>()
+                .AddScoped<ApplicationConfigService>()
+                .AddScoped<SubscriptionService>()
+                .AddScoped<UserService>()
+                .AddScoped<OfferService>()
+                .AddScoped<PlanService>()
+            ;
+
+            services
+               .AddScoped<PendingActivationStatusHandler>()
+               .AddScoped<PendingFulfillmentStatusHandler>()
+               .AddScoped<UnsubscribeStatusHandler>()
+               .AddScoped<NotificationStatusHandler>();
+
+            services
                 .AddDbContext<SaasKitContext>(options => options.UseSqlServer(this.Configuration.GetConnectionString("DefaultConnection")));
 
             InitializeRepositoryServices(services);
@@ -152,6 +165,8 @@ namespace Microsoft.Marketplace.SaasKit.Client
             services.AddScoped<IUsersRepository, UsersRepository>();
             services.AddScoped<ISubscriptionLogRepository, SubscriptionLogRepository>();
             services.AddScoped<IApplicationLogRepository, ApplicationLogRepository>();
+            services.AddScoped<ISubscriptionUsageLogsRepository, SubscriptionUsageLogsRepository>();
+            services.AddScoped<IMeteredDimensionsRepository, MeteredDimensionsRepository>();
             services.AddScoped<IWebhookProcessor, WebhookProcessor>();
             services.AddScoped<IWebhookHandler, WebHookHandler>();
             services.AddScoped<IApplicationConfigRepository, ApplicationConfigRepository>();
@@ -160,7 +175,6 @@ namespace Microsoft.Marketplace.SaasKit.Client
             services.AddScoped<IOfferAttributesRepository, OfferAttributesRepository>();
             services.AddScoped<IPlanEventsMappingRepository, PlanEventsMappingRepository>();
             services.AddScoped<IEventsRepository, EventsRepository>();
-            services.AddScoped<IEmailService, SMTPEmailService>();
         }
     }
 }

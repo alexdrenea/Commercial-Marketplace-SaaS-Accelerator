@@ -15,7 +15,7 @@
         /// <value>
         /// The subscription detail.
         /// </value>
-        public Subscriptions SubscriptionDetail { get; set; }
+        public SubscriptionResultExtension SubscriptionDetail { get; set; }
 
         /// <summary>
         /// Gets or sets the quantity.

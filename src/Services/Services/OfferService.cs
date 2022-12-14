@@ -2,13 +2,16 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
+    using Microsoft.Marketplace.SaaS.Models;
     using Microsoft.Marketplace.SaaS.SDK.Services.Models;
     using Microsoft.Marketplace.SaasKit.Client.DataAccess.Contracts;
+    using Microsoft.Marketplace.SaasKit.Client.DataAccess.Entities;
 
     /// <summary>
     /// Service to enable operations over offers.
     /// </summary>
-    public class OfferServices
+    public class OfferService
     {
         /// <summary>
         /// The offer repository.
@@ -16,12 +19,30 @@
         private IOffersRepository offerRepository;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OfferServices"/> class.
+        /// Initializes a new instance of the <see cref="OfferService"/> class.
         /// </summary>
         /// <param name="offerRepo">The offer repo.</param>
-        public OfferServices(IOffersRepository offerRepo)
+        public OfferService(IOffersRepository offerRepo)
         {
             this.offerRepository = offerRepo;
+        }
+
+        /// <summary>
+        /// Add new Offer in the database
+        /// </summary>
+        /// <returns>New Offer Guid</returns>
+        public Guid AddOffer(string offerId, int currentUserId)
+        {
+            var newOfferId = this.offerRepository.Add(new Offers()
+            {
+                OfferId = offerId,
+                OfferName = offerId,
+                UserId = currentUserId,
+                CreateDate = DateTime.Now,
+                OfferGuid = Guid.NewGuid(),
+            });
+
+            return newOfferId;
         }
 
         /// <summary>
@@ -30,19 +51,15 @@
         /// <returns> Offers Model.</returns>
         public List<OffersModel> GetOffers()
         {
-            List<OffersModel> offersList = new List<OffersModel>();
-            var allOfferData = this.offerRepository.GetAll();
-            foreach (var item in allOfferData)
-            {
-                OffersModel offers = new OffersModel();
-                offers.Id = item.Id;
-                offers.OfferID = item.OfferId;
-                offers.OfferName = item.OfferName;
-                offers.CreateDate = item.CreateDate;
-                offers.UserID = item.UserId;
-                offers.OfferGuId = item.OfferGuid;
-                offersList.Add(offers);
-            }
+            var allOfferData = this.offerRepository.GetAll().ToList();
+            var offersList = allOfferData.Select(item => new OffersModel() {
+                Id = item.Id,
+                OfferID = item.OfferId,
+                OfferName = item.OfferName,
+                CreateDate = item.CreateDate,
+                UserID = item.UserId,
+                OfferGuId = item.OfferGuid
+            }).ToList();
 
             return offersList;
         }

@@ -40,6 +40,24 @@
             this.offerRepository = offerRepository;
         }
 
+        public void Add(params PlanDetailResultExtension[] allPlanDetail)
+        {
+            foreach (var planDetail in allPlanDetail)
+            {
+                plansRepository.Save(new Plans
+                {
+                    PlanId = planDetail.PlanId,
+                    DisplayName = planDetail.DisplayName,
+                    Description = "",
+                    OfferId = planDetail.OfferId,
+                    PlanGuid = planDetail.PlanGUID,
+                    MeteredDimensions = planDetail.GetmeteredDimensions(),
+                    IsmeteringSupported = planDetail.IsmeteringSupported,
+                    IsPerUser = planDetail.IsPerUserPlan,
+                });
+            }
+        }
+
         /// <summary>
         /// Gets the plans.
         /// </summary>
@@ -65,6 +83,23 @@
 
             return plansList;
         }
+
+        /// <summary>
+        /// Gets a plan given a Markeplce plan id ("free") and an offerId, return the plan details
+        /// </summary>
+        /// <param name="planId"></param>
+        /// <returns></returns>
+        public PlansModel GetPlanById(string planId, Guid offerId)
+        {
+            var plan = this.plansRepository.GetPlansByOfferId(offerId).FirstOrDefault(p => p.PlanId == planId);
+            var offer = this.offerRepository.GetOfferById(offerId);
+
+            var planModel = FromPlan(plan);
+            planModel.OfferName = offer?.OfferName;
+
+            return planModel;
+        }
+
 
         /// <summary>
         /// Gets the plan detail by plan gu identifier.
@@ -223,9 +258,23 @@
         public List<PlansModel> GetMeteredPlans()
         {
             List<PlansModel> allplans = this.GetPlans();
-            return allplans.Where(p => p.IsmeteringSupported==true).ToList();
+            return allplans.Where(p => p.IsmeteringSupported == true).ToList();
 
 
+        }
+
+        private PlansModel FromPlan(Plans plan)
+        {
+            if (plan == null) return null;
+            return new PlansModel
+            {
+                PlanId = plan.PlanId,
+                DisplayName = plan.DisplayName,
+                Description = plan.Description,
+                IsmeteringSupported = plan.IsmeteringSupported,
+                OfferID = plan.OfferId,
+                PlanGUID = plan.PlanGuid,
+            };
         }
     }
 }

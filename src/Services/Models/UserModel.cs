@@ -5,7 +5,7 @@
     /// <summary>
     /// Partner Detail ViewModel.
     /// </summary>
-    public class PartnerDetailViewModel
+    public class UserModel
     {
         /// <summary>
         /// Gets or sets the user identifier.

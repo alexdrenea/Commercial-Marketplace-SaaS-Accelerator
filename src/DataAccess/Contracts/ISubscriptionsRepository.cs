@@ -19,7 +19,7 @@
         /// <param name="subscriptionId">The subscription identifier.</param>
         /// <param name="isIncludeDeactvated">if set to <c>true</c> [is include deactvated].</param>
         /// <returns> Subscriptions.</returns>
-        IEnumerable<Subscriptions> GetSubscriptionsByEmailAddress(string partnerEmailAddress, Guid subscriptionId, bool isIncludeDeactvated = false);
+        IEnumerable<Subscriptions> GetSubscriptionsByEmailAddress(string partnerEmailAddress, bool isIncludeDeactvated = false);
 
         /// <summary>
         /// Gets the subscriptions by schedule identifier.

@@ -19,7 +19,8 @@ namespace Microsoft.Marketplace.Saas.Web
             var loggerFactory = LoggerFactory.Create(builder =>
             {
                 builder
-                    .AddConsole();
+                    .AddConsole()
+                    .AddDebug();
             });
 
             ILogger logger = loggerFactory.CreateLogger<Program>();
@@ -32,16 +33,17 @@ namespace Microsoft.Marketplace.Saas.Web
         /// <param name="args">The arguments.</param>
         /// <returns> host bulder.</returns>
         public static IHostBuilder CreateHostBuilder(string[] args) =>
-    Host.CreateDefaultBuilder(args)
-        .ConfigureLogging(logging =>
-        {
-            logging.ClearProviders();
-            logging.AddConsole();
-        })
-        .ConfigureWebHostDefaults(webBuilder =>
-        {
-            //webBuilder.UseUrls("https://*:5081", "http://*:5080");
-            webBuilder.UseStartup<Startup>();
-        });
+            Host.CreateDefaultBuilder(args)
+                 .ConfigureLogging(logging =>
+                 {
+                     logging.ClearProviders();
+                     logging.AddConsole();
+                     logging.AddDebug();
+                 })
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    //webBuilder.UseUrls("https://*:5081", "http://*:5080");
+                    webBuilder.UseStartup<Startup>();
+                });
     }
 }

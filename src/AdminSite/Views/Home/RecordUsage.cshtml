@@ -10,7 +10,7 @@
 </head>
 <body>
 
-@if (Model.SubscriptionDetail != null && Model.SubscriptionDetail.Id > 0)
+    @if (Model.SubscriptionDetail != null && Model.SubscriptionDetail.SubscribeId > 0)
 {
     <div>
         <div class="container">
@@ -21,12 +21,12 @@
                         <div class="text-left">
                             <span class="cm-section-heading">Manage Subscription Usage</span>
                         </div>
-                        <form asp-action="ManageSubscriptionUsage" method="post">
+                        <form asp-action="RecordSubscriptionUsage" method="post">
                             <div class="row p10">
                                 <div class="col-md-1 pt-1">
-                                    @Html.HiddenFor(s => s.SubscriptionDetail.Id)
-                                    @Html.HiddenFor(s => s.SubscriptionDetail.AmpsubscriptionId)
-                                    @Html.HiddenFor(s => s.SubscriptionDetail.AmpplanId)
+                                        @Html.HiddenFor(s => s.SubscriptionDetail.SubscribeId)
+                                        @Html.HiddenFor(s => s.SubscriptionDetail.Id)
+                                        @Html.HiddenFor(s => s.SubscriptionDetail.PlanId)
                                     @Html.LabelFor(s => s.Quantity, new { @class = "font-weight-bold" })
                                 </div>
                                 <div class="col-md-2">
