@@ -10,5 +10,6 @@ public partial class PlanAttributeOutput
     public int OfferAttributeId { get; set; }
     public string DisplayName { get; set; }
     public bool IsEnabled { get; set; }
+    public bool IsActive { get; set; }
     public string Type { get; set; }
 }

@@ -2,6 +2,9 @@
 // Licensed under the MIT License. See LICENSE file in the project root for license information.
 
 using System;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Marketplace.SaaS.Accelerator.DataAccess.Contracts;
 using Marketplace.SaaS.Accelerator.DataAccess.Entities;
@@ -17,6 +20,8 @@ namespace Marketplace.SaaS.Accelerator.Services.StatusHandlers;
 /// <seealso cref="Microsoft.Marketplace.SaasKit.Provisioning.Webjob.StatusHandlers.AbstractSubscriptionStatusHandler" />
 public class PendingActivationStatusHandler : AbstractSubscriptionStatusHandler
 {
+    private readonly ProvisionEndpointModel provisionEndpoint;
+
     /// <summary>
     /// The fulfillment apiclient.
     /// </summary>
@@ -48,12 +53,14 @@ public class PendingActivationStatusHandler : AbstractSubscriptionStatusHandler
         ISubscriptionLogRepository subscriptionLogRepository,
         IPlansRepository plansRepository,
         IUsersRepository usersRepository,
+        ProvisionEndpointModel provisionEndpoint,
         ILogger<PendingActivationStatusHandler> logger)
         : base(subscriptionsRepository, plansRepository, usersRepository)
     {
         this.fulfillmentApiService = fulfillApiService;
         this.subscriptionLogRepository = subscriptionLogRepository;
         this.logger = logger;
+        this.provisionEndpoint = provisionEndpoint;
     }
 
     /// <summary>
@@ -74,6 +81,33 @@ public class PendingActivationStatusHandler : AbstractSubscriptionStatusHandler
             try
             {
                 this.logger?.LogInformation("Get attributelsit");
+
+                var plan = this.GetPlanById(subscription.AmpplanId);
+                var subscriptionParameters = this.subscriptionsRepository.GetSubscriptionsParametersById(subscriptionID, plan.PlanGuid);
+                var provisionLogicAppPayload = new
+                {
+                    messageTemplate = subscriptionParameters.FirstOrDefault(sp=>sp.DisplayName == "Custom SMS Message").Value,
+                    marketplaceSubId = subscriptionID.ToString(),
+                    name = $"{subscription.AmpplanId}"
+                };
+
+                var generateApiKeyResult = new HttpClient().PostAsJsonAsync(provisionEndpoint.ProvisionUrl, provisionLogicAppPayload).GetAwaiter().GetResult();
+                generateApiKeyResult.EnsureSuccessStatusCode();
+                var apiKey = generateApiKeyResult.Content.ReadAsStringAsync().Result;
+
+                var apiKeyParameter = subscriptionParameters.FirstOrDefault(sp => sp.DisplayName == "ApiKey");
+                this.subscriptionsRepository.AddSubscriptionParameters(new SubscriptionParametersOutput
+                {
+                    Id = apiKeyParameter.Id,
+                    PlanId = apiKeyParameter.PlanId,
+                    DisplayName = apiKeyParameter.DisplayName,
+                    PlanAttributeId = apiKeyParameter.PlanAttributeId,
+                    SubscriptionId = apiKeyParameter.SubscriptionId,
+                    OfferId = apiKeyParameter.OfferId,
+                    Value = apiKey,
+                    UserId = subscription.UserId,
+                    CreateDate = DateTime.Now,
+                });
 
                 var subscriptionData = this.fulfillmentApiService.ActivateSubscriptionAsync(subscriptionID, subscription.AmpplanId).ConfigureAwait(false).GetAwaiter().GetResult();
 

@@ -89,6 +89,10 @@ public class Startup
         {
             KnownUsers = this.Configuration["KnownUsers"],
         };
+        var provisionEndpoint = new ProvisionEndpointModel()
+        {
+            ProvisionUrl = this.Configuration["ProvisioningURL"],
+        };
         var creds = new ClientSecretCredential(config.TenantId.ToString(), config.ClientId.ToString(), config.ClientSecret);
 
 
@@ -118,7 +122,8 @@ public class Startup
             .AddSingleton<IFulfillmentApiService>(new FulfillmentApiService(new MarketplaceSaaSClient(creds), config, new FulfillmentApiClientLogger()))
             .AddSingleton<IMeteredBillingApiService>(new MeteredBillingApiService(new MarketplaceMeteringClient(creds), config, new MeteringApiClientLogger()))
             .AddSingleton<SaaSApiClientConfiguration>(config)
-            .AddSingleton<KnownUsersModel>(knownUsers);
+            .AddSingleton<KnownUsersModel>(knownUsers)
+            .AddSingleton<ProvisionEndpointModel>(provisionEndpoint);
 
         services
             .AddDbContext<SaasKitContext>(options => options.UseSqlServer(this.Configuration.GetConnectionString("DefaultConnection")));

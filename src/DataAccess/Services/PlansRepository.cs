@@ -228,6 +228,7 @@ public class PlansRepository : IPlansRepository
                 planAttributes.PlanId = offerAttribute.PlanId;
                 planAttributes.OfferAttributeId = offerAttribute.OfferAttributeId;
                 planAttributes.IsEnabled = offerAttribute.IsEnabled;
+                planAttributes.IsActive = offerAttribute.IsActive;
                 planAttributes.DisplayName = offerAttribute.DisplayName;
                 planAttributes.Type = offerAttribute.Type;
                 attributesList.Add(planAttributes);

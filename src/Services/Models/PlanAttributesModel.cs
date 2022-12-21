@@ -46,6 +46,7 @@ public class PlanAttributesModel
     ///   <c>true</c> if this instance is enabled; otherwise, <c>false</c>.
     /// </value>
     public bool IsEnabled { get; set; }
+    public bool IsActive { get; set; }
 
     /// <summary>
     /// Gets or sets the user identifier.

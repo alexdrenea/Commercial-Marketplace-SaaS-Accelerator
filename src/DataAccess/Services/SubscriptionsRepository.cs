@@ -195,6 +195,7 @@ public class SubscriptionsRepository : ISubscriptionsRepository
         if (existingSubscriptionparameter != null)
         {
             existingSubscriptionparameter.OfferId = subscriptionParametersOutput.OfferId;
+            existingSubscriptionparameter.Value = subscriptionParametersOutput.Value;
             this.context.SubscriptionAttributeValues.Update(existingSubscriptionparameter);
             this.context.SaveChanges();
         }

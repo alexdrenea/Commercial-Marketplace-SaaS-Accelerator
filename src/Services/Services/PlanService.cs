@@ -101,6 +101,7 @@ public class PlanService
                 PlanId = existingPlan.PlanGuid,
                 DisplayName = attribute.DisplayName,
                 IsEnabled = attribute.IsEnabled,
+                IsActive= attribute.IsActive,
                 Type = attribute.Type,
             };
             plan.PlanAttributes.Add(planAttributesmodel);

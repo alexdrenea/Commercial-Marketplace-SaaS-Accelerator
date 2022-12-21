@@ -8,6 +8,7 @@ using Marketplace.SaaS.Accelerator.DataAccess.Contracts;
 using Marketplace.SaaS.Accelerator.DataAccess.Services;
 using Marketplace.SaaS.Accelerator.Services.Configurations;
 using Marketplace.SaaS.Accelerator.Services.Contracts;
+using Marketplace.SaaS.Accelerator.Services.Models;
 using Marketplace.SaaS.Accelerator.Services.Services;
 using Marketplace.SaaS.Accelerator.Services.Utilities;
 using Marketplace.SaaS.Accelerator.Services.WebHook;
@@ -80,6 +81,10 @@ public class Startup
             TenantId = this.Configuration["SaaSApiConfiguration:TenantId"],
             Environment = this.Configuration["SaaSApiConfiguration:Environment"]
         };
+        var provisionEndpoint = new ProvisionEndpointModel()
+        {
+            ProvisionUrl = this.Configuration["ProvisioningURL"],
+        };
         var creds = new ClientSecretCredential(config.TenantId.ToString(), config.ClientId.ToString(), config.ClientSecret);
 
         services
@@ -105,7 +110,8 @@ public class Startup
 
         services
             .AddSingleton<IFulfillmentApiService>(new FulfillmentApiService(new MarketplaceSaaSClient(creds), config, new FulfillmentApiClientLogger()))
-            .AddSingleton<SaaSApiClientConfiguration>(config);
+            .AddSingleton<SaaSApiClientConfiguration>(config)
+            .AddSingleton<ProvisionEndpointModel>(provisionEndpoint);
 
         services
             .AddDbContext<SaasKitContext>(options => options.UseSqlServer(this.Configuration.GetConnectionString("DefaultConnection")));

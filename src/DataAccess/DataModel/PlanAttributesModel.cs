@@ -62,4 +62,6 @@ public class PlanAttributesModel
     /// The type.
     /// </value>
     public string Type { get; set; }
+
+    public bool IsActive { get; set; }
 }

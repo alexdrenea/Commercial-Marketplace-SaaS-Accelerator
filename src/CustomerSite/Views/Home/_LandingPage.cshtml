@@ -89,6 +89,10 @@
                                 @Html.HiddenFor(model => model.SubscriptionParameters[i].SubscriptionId)
                                 @Html.HiddenFor(model => model.SubscriptionParameters[i].DisplayName)
                                 @Html.HiddenFor(model => model.SubscriptionParameters[i].Type)
+                                if (Model.SubscriptionStatus == SubscriptionStatusEnumExtension.PendingFulfillmentStart && !Model.SubscriptionParameters[i].IsActive)
+                                {
+                                    continue;
+                                }
 
                                 if (Model.SubscriptionStatus == SubscriptionStatusEnumExtension.PendingFulfillmentStart)
                                 {
