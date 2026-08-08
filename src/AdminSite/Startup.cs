@@ -61,7 +61,20 @@ public class Startup
     /// <param name="services">The services.</param>
     public void ConfigureServices(IServiceCollection services)
     {
-        services.Configure<CookiePolicyOptions>(options =>
+		services.Configure<ForwardedHeadersOptions>(options =>
+		{
+			options.ForwardedHeaders =
+				Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+				Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto |
+				Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost;
+			options.ForwardLimit = 2;
+
+			// CRITICAL: Clear these or .NET will reject headers from proxies not in the allow-list
+			options.KnownIPNetworks.Clear();
+			options.KnownProxies.Clear();
+		});
+
+		services.Configure<CookiePolicyOptions>(options =>
         {
             // This lambda determines whether user consent for non-essential cookies is needed for a given request.
             options.CheckConsentNeeded = context => true;
@@ -182,7 +195,9 @@ public class Startup
     /// <param name="env">The env.</param>
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
-        if (env.IsDevelopment())
+		app.UseForwardedHeaders();
+
+		if (env.IsDevelopment())
         {
             app.UseDeveloperExceptionPage();
         }
