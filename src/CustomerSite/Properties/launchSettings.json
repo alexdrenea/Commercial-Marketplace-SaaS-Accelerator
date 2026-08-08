@@ -15,7 +15,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "Microsoft.MarketPlace.SaasKit.Web": {
+    "LandingPage - Web": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {

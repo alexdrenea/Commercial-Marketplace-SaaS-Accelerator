@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-	  <TargetFramework>net8.0</TargetFramework>
+	  <TargetFramework>net10.0</TargetFramework>
 	  <Authors>Microsoft.Marketplace</Authors>
 	  <Company>Microsoft</Company>
 	  <Product>Marketplace.SaaS.Accelerator</Product>
 	  <AssemblyName>AdminSite</AssemblyName>
 	  <RootNamespace>Marketplace.SaaS.Accelerator.AdminSite</RootNamespace>
-	  <Version>8.2.1</Version>
+	  <Version>10.0.0</Version>
 	  <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
@@ -27,18 +27,12 @@
   </ItemGroup>
 
   <ItemGroup>
-	<PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.0" />
-	<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="8.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="8.0.0" />
-	<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.6" />
-	<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.6">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-	  <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0" />
-	  <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
+	<PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.10" />
+	<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.10" />
+	<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.10">
+	  <PrivateAssets>all</PrivateAssets>
+	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	</PackageReference>
 	 
   </ItemGroup>
 
