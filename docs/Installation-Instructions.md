@@ -81,6 +81,8 @@ If you already have deployed the SaaS Accelerator, but you want to update it so 
 *if upgrading to release version < 8.0.0, please replace the below dotnet and dotnet-ef versions to 6 release.
 *if upgrading from a release version < 9.0.0 (i.e. .NET 8 or earlier), please replace the below dotnet and dotnet-ef versions to 8 release (dotnet-install -version 8.0.303, dotnet-ef --version 8.0.0).
 
+The upgrade script builds the selected release locally, verifies through Kudu that both existing App Services have the required .NET runtimes, and deploys both web applications. It compares the commit recorded on the deployed apps with the selected release and skips database access entirely when no migration files changed. Use `-ForceDatabaseMigration` to bypass this optimization. When migration files changed or the comparison is inconclusive, the script applies idempotent database migrations using your Azure CLI identity. If Kudu validation is unavailable for a Windows App Service, the script displays the required runtimes and asks you to confirm that .NET 10 is available in the App Service runtime picker; a successful check that reports a missing runtime still stops the upgrade. Linux runtime validation cannot be bypassed. When a migration is required, the script temporarily enables SQL public network access for the current client IP and restores the previous network state when the migration completes or fails. The signed-in identity must be able to manage the existing resources, access Kudu through a role that includes `Microsoft.Web/sites/publish/Action`, and connect to the database through Microsoft Entra authentication. Azure Policy must permit the temporary SQL public endpoint.
+
 ``` powershell
 wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh; `
 chmod +x dotnet-install.sh; `
@@ -92,6 +94,8 @@ cd ./Commercial-Marketplace-SaaS-Accelerator/deployment; `
 .\Upgrade.ps1 `
  -WebAppNamePrefix "marketplace-SOME-UNIQUE-STRING" `
  -ResourceGroupForDeployment "marketplace-SOME-UNIQUE-STRING" `
+ -TenantID "<tenant-id>" `
+ -AzureSubscriptionID "<subscription-id>"
  ```
 
 ## Install script parameter descriptions
