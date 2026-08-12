@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE file in the project root for license information.
 using System;
+using Marketplace.SaaS.Accelerator.Services.Models;
 
 namespace Marketplace.SaaS.Accelerator.Services.Configurations;
 
@@ -9,6 +10,21 @@ namespace Marketplace.SaaS.Accelerator.Services.Configurations;
 /// </summary>
 public class SaaSApiClientConfiguration
 {
+    /// <summary>
+    /// Parses a named fulfillment mode, defaulting to SDK for missing or invalid values.
+    /// Numeric enum representations are intentionally rejected.
+    /// </summary>
+    public static FulfillmentMode ParseFulfillmentMode(string value)
+    {
+        foreach (var name in Enum.GetNames<FulfillmentMode>())
+        {
+            if (string.Equals(name, value, StringComparison.OrdinalIgnoreCase))
+                return Enum.Parse<FulfillmentMode>(name);
+        }
+
+        return FulfillmentMode.Sdk;
+    }
+
     /// <summary>
     /// Gets or sets the type of the grant.
     /// </summary>
@@ -112,6 +128,14 @@ public class SaaSApiClientConfiguration
     /// The value for IsAdminPortalMultiTenant. Typically, true, false, or null.
     /// </value>
     public string IsAdminPortalMultiTenant { get; set; }
+
+    /// <summary>
+    /// Controls which HTTP transport is used for Marketplace Fulfillment operations.
+    /// Accepted values: Sdk (default), Hybrid, Direct.
+    /// Set via environment variable: SaaSApiConfiguration__FulfillmentMode
+    /// Requires process restart to change; hot reload is not supported.
+    /// </summary>
+    public FulfillmentMode FulfillmentMode { get; set; } = FulfillmentMode.Sdk;
 
 
 }

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Azure;
 using Marketplace.SaaS.Accelerator.Services.Configurations;
@@ -18,31 +19,23 @@ namespace Marketplace.SaaS.Accelerator.Services.Services;
 
 /// <summary>
 /// Fulfillment API Client Action-List For Subscriptions.
+/// Read operations (Resolve, GetSubscription, ListSubscriptions, ListAvailablePlans) are
+/// routed through the IMarketplaceDirectClient when FulfillmentMode is Hybrid or Direct.
+/// All write operations use the SDK except in Direct mode.
 /// </summary>
-/// <seealso cref="Microsoft.Marketplace.SaaS.SDK.Services.Contracts.IFulfilmentApiClient" />
 public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
 {
-    /// <summary>
-    /// Gets or sets the SDK settings.
-    /// </summary>
-    /// <value>
-    /// The SDK settings.
-    /// </value>
     protected SaaSApiClientConfiguration ClientConfiguration { get; set; }
 
-    /// <summary>
-    /// Gets or sets the Marketplace SaaS client.
-    /// </summary>
-    /// <value>
-    /// The SDK settings.
-    /// </value>
     private readonly IMarketplaceSaaSClient marketplaceClient;
 
+    /// <summary>Optional direct HTTP client for read operations.</summary>
+    private readonly IMarketplaceDirectClient directClient;
+
     /// <summary>
-    /// Initializes a new instance of the <see cref="FulfillmentApiService" /> class.
+    /// Initializes a new instance of <see cref="FulfillmentApiService"/> using only the SDK client.
+    /// Reads will always use the SDK (mode Sdk).
     /// </summary>
-    /// <param name="sdkSettings">The SDK settings.</param>
-    /// <param name="logger">The logger.</param>
     public FulfillmentApiService(IMarketplaceSaaSClient marketplaceClient,
         SaaSApiClientConfiguration sdkSettings,
         ILogger logger) : base(logger)
@@ -52,12 +45,38 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
     }
 
     /// <summary>
+    /// Initializes a new instance of <see cref="FulfillmentApiService"/> with an optional
+    /// direct HTTP client that overrides SDK reads when configured.
+    /// </summary>
+    public FulfillmentApiService(IMarketplaceSaaSClient marketplaceClient,
+        IMarketplaceDirectClient directClient,
+        SaaSApiClientConfiguration sdkSettings,
+        ILogger logger) : base(logger)
+    {
+        this.marketplaceClient = marketplaceClient;
+        this.directClient = directClient;
+        this.ClientConfiguration = sdkSettings;
+    }
+
+    // ── Fulfillment mode helpers ──────────────────────────────────────────
+
+    private bool UseDirectReads => directClient != null
+        && ClientConfiguration.FulfillmentMode is FulfillmentMode.Direct or FulfillmentMode.Hybrid;
+
+    private bool UseDirectWrites => directClient != null
+        && ClientConfiguration.FulfillmentMode == FulfillmentMode.Direct;
+
+    /// <summary>
     /// Get all subscriptions asynchronously.
     /// </summary>
     /// <returns> List of subscriptions.</returns>
     public async Task<List<SubscriptionResult>> GetAllSubscriptionAsync()
     {
         this.Logger?.Info($"Inside GetAllSubscriptionAsync() of FulfillmentApiService, trying to get All Subscriptions.");
+
+        if (UseDirectReads)
+            return await directClient!.GetAllSubscriptionsAsync();
+
         try
         {
             var subscriptions = await this.marketplaceClient.Fulfillment.ListSubscriptionsAsync().ToListAsync();
@@ -77,6 +96,10 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
     public List<SubscriptionResult> GetAllSubscriptions()
     {
         this.Logger?.Info($"Inside GetAllSubscriptions() of FulfillmentApiService, trying to get All Subscriptions.");
+
+        if (UseDirectReads)
+            return directClient!.GetAllSubscriptions();
+
         try
         {
             List<Subscription> subscriptions = this.marketplaceClient.Fulfillment.ListSubscriptions().ToList();
@@ -99,6 +122,10 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
     public async Task<SubscriptionResult> GetSubscriptionByIdAsync(Guid subscriptionId)
     {
         this.Logger?.Info($"Inside GetSubscriptionByIdAsync() of FulfillmentApiService, trying to gets the Subscription Detail by subscriptionId : {subscriptionId}");
+
+        if (UseDirectReads)
+            return await directClient!.GetSubscriptionByIdAsync(subscriptionId);
+
         try
         {
             var subscription = (await this.marketplaceClient.Fulfillment.GetSubscriptionAsync(subscriptionId)).Value;
@@ -121,6 +148,10 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
     public SubscriptionResult GetSubscriptionById(Guid subscriptionId)
     {
         this.Logger?.Info($"Inside GetSubscriptionById() of FulfillmentApiService, trying to gets the Subscription Detail by subscriptionId : {subscriptionId}");
+
+        if (UseDirectReads)
+            return directClient!.GetSubscriptionById(subscriptionId);
+
         try
         {
             var subscription = (this.marketplaceClient.Fulfillment.GetSubscription(subscriptionId)).Value;
@@ -143,8 +174,12 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
     public async Task<ResolvedSubscriptionResult> ResolveAsync(string marketPlaceAccessToken)
     {
         this.Logger?.Info($"Inside ResolveAsync() of FulfillmentApiService, trying to resolve the Subscription by MarketPlaceToken");
-        try 
-        { 
+
+        if (UseDirectReads)
+            return await directClient!.ResolveAsync(marketPlaceAccessToken);
+
+        try
+        {
             var resolvedSubscription = (await this.marketplaceClient.Fulfillment.ResolveAsync(marketPlaceAccessToken)).Value;
             return resolvedSubscription.resolvedSubscriptionResult();
         }
@@ -168,6 +203,9 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
         this.Logger?.Info($"Inside GetAllPlansForSubscriptionAsync() of FulfillmentApiService, trying to Get All Plans for {subscriptionId}");
         if (subscriptionId != default)
         {
+            if (UseDirectReads)
+                return await directClient!.GetAllPlansForSubscriptionAsync(subscriptionId);
+
             try
             {
                 var availablePlans = (await this.marketplaceClient.Fulfillment.ListAvailablePlansAsync(subscriptionId)).Value;
@@ -200,8 +238,11 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
         this.Logger?.Info($"Inside ChangePlanForSubscriptionAsync() of FulfillmentApiService, trying to Change Plan By {subscriptionId} with New Plan {subscriptionPlanID}");
         if (subscriptionId != default)
         {
-            try 
-            { 
+            if (UseDirectWrites)
+                return await directClient!.ChangePlanForSubscriptionAsync(subscriptionId, subscriptionPlanID);
+
+            try
+            {
                 var operationId = await this.marketplaceClient.Fulfillment.UpdateSubscriptionAsync(subscriptionId, new SubscriberPlan { PlanId = subscriptionPlanID });
                 return new SubscriptionUpdateResult() { OperationIdFromClientLib = operationId };
             }
@@ -229,8 +270,11 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
         this.Logger?.Info($"Inside ChangeQuantityForSubscriptionAsync() of FulfillmentApiService, trying to Change Quantity By {subscriptionId} with New Quantity {subscriptionQuantity}");
         if (subscriptionId != default)
         {
-            try 
-            { 
+            if (UseDirectWrites)
+                return await directClient!.ChangeQuantityForSubscriptionAsync(subscriptionId, subscriptionQuantity);
+
+            try
+            {
                 var operationId = await this.marketplaceClient.Fulfillment.UpdateSubscriptionAsync(subscriptionId, new SubscriberPlan { Quantity = subscriptionQuantity });
                 return new SubscriptionUpdateResult() { OperationIdFromClientLib = operationId };
             }
@@ -256,8 +300,11 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
     public async Task<OperationResult> GetOperationStatusResultAsync(Guid subscriptionId, Guid operationId)
     {
         this.Logger?.Info($"Inside GetOperationStatusResultAsync() of FulfillmentApiService, trying to Get Operation Status By Operation ID : {operationId}");
-        try 
-        { 
+        if (UseDirectWrites)
+            return await directClient!.GetOperationStatusAsync(subscriptionId, operationId);
+
+        try
+        {
             var operationDetails = (await this.marketplaceClient.Operations.GetOperationStatusAsync(subscriptionId, operationId)).Value;
             return operationDetails.operationResult();
         }
@@ -281,6 +328,9 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
     public async Task<Response> PatchOperationStatusResultAsync(Guid subscriptionId, Guid operationId, UpdateOperationStatusEnum updateOperationStatus)
     {
         this.Logger?.Info($"Inside PatchOperationStatusResultAsync() of FulfillmentApiService, trying to Update Operation Status to { updateOperationStatus} Operation ID : {operationId} Subscription ID : {subscriptionId}");
+        if (UseDirectWrites)
+            return await directClient!.PatchOperationStatusAsync(subscriptionId, operationId, updateOperationStatus);
+
         try
         {
             UpdateOperation updateOperation = new UpdateOperation();
@@ -307,8 +357,11 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
     public async Task<SubscriptionUpdateResult> DeleteSubscriptionAsync(Guid subscriptionId, string subscriptionPlanID)
     {
         this.Logger?.Info($"Inside DeleteSubscriptionAsync() of FulfillmentApiService, trying to Delete Subscription :: {subscriptionId}");
-        try 
-        { 
+        if (UseDirectWrites)
+            return await directClient!.DeleteSubscriptionAsync(subscriptionId);
+
+        try
+        {
             var operationId = await this.marketplaceClient.Fulfillment.DeleteSubscriptionAsync(subscriptionId);
             return new SubscriptionUpdateResult() { OperationIdFromClientLib = operationId };
         }
@@ -329,9 +382,13 @@ public class FulfillmentApiService : BaseApiService, IFulfillmentApiService
     /// </returns>
     public async Task<Response> ActivateSubscriptionAsync(Guid subscriptionId, string subscriptionPlanId)
     {
+        subscriptionPlanId = subscriptionPlanId.Replace(Environment.NewLine, "");
         this.Logger?.Info($"Inside ActivateSubscriptionAsync() of FulfillmentApiService, trying to Activate Subscription :: {subscriptionId}");
-        try 
-        { 
+        if (UseDirectWrites)
+            return await directClient!.ActivateSubscriptionAsync(subscriptionId, subscriptionPlanId);
+
+        try
+        {
             return await this.marketplaceClient.Fulfillment.ActivateSubscriptionAsync(subscriptionId, new SubscriberPlan { PlanId = subscriptionPlanId });
         }
         catch (RequestFailedException ex)

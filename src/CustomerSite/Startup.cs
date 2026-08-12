@@ -90,7 +90,9 @@ public class Startup
             SaaSAppUrl = this.Configuration["SaaSApiConfiguration:SaaSAppUrl"],
             SignedOutRedirectUri = this.Configuration["SaaSApiConfiguration:SignedOutRedirectUri"],
             TenantId = this.Configuration["SaaSApiConfiguration:TenantId"],
-            Environment = this.Configuration["SaaSApiConfiguration:Environment"]
+            Environment = this.Configuration["SaaSApiConfiguration:Environment"],
+            FulfillmentMode = SaaSApiClientConfiguration.ParseFulfillmentMode(
+                this.Configuration["SaaSApiConfiguration:FulfillmentMode"]),
         };
         var creds = new ClientSecretCredential(config.TenantId.ToString(), config.ClientId.ToString(), config.ClientSecret);
 
@@ -127,8 +129,22 @@ public class Startup
             fulfillmentBaseApi = new Uri("https://marketplaceapi.microsoft.com/api");
         }
 
+        services.AddHttpClient(nameof(Marketplace.SaaS.Accelerator.Services.Services.MarketplaceDirectClient));
+
         services
-            .AddSingleton<IFulfillmentApiService>(new FulfillmentApiService(new MarketplaceSaaSClient(fulfillmentBaseApi, creds), config, new FulfillmentApiClientLogger()))
+            .AddSingleton<Azure.Core.TokenCredential>(creds)
+            .AddSingleton<Marketplace.SaaS.Accelerator.Services.Contracts.IMarketplaceDirectClient>(sp =>
+                new Marketplace.SaaS.Accelerator.Services.Services.MarketplaceDirectClient(
+                    sp.GetRequiredService<System.Net.Http.IHttpClientFactory>(),
+                    sp.GetRequiredService<Azure.Core.TokenCredential>(),
+                    config,
+                    new Marketplace.SaaS.Accelerator.Services.Utilities.FulfillmentApiClientLogger()))
+            .AddSingleton<IFulfillmentApiService>(sp =>
+                new FulfillmentApiService(
+                    new MarketplaceSaaSClient(fulfillmentBaseApi, creds),
+                    sp.GetRequiredService<Marketplace.SaaS.Accelerator.Services.Contracts.IMarketplaceDirectClient>(),
+                    config,
+                    new FulfillmentApiClientLogger()))
             .AddSingleton<SaaSApiClientConfiguration>(config)
             .AddSingleton<ValidateJwtToken>();
 

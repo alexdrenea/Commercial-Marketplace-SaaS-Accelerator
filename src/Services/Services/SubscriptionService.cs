@@ -68,7 +68,7 @@ public class SubscriptionService
             PurchaserEmail = subscriptionDetail.Purchaser.EmailId,
             PurchaserTenantId = subscriptionDetail.Purchaser.TenantId,
             AmpOfferId = subscriptionDetail.OfferId,
-            Term = subscriptionDetail.Term.TermUnit.ToString(),
+            Term = subscriptionDetail.Term?.TermUnit,
             StartDate = subscriptionDetail.Term.StartDate.ToUniversalTime().DateTime,
             EndDate = subscriptionDetail.Term.EndDate.ToUniversalTime().DateTime
         };
@@ -173,9 +173,7 @@ public class SubscriptionService
             IsMeteringSupported = existingPlanDetail != null ? (existingPlanDetail.IsmeteringSupported ?? false) : false,
         };
 
-        if (!Enum.TryParse<TermUnitEnum>(subscription.Term, out var termUnit))
-            termUnit = TermUnitEnum.P1M;
-        subscritpionDetail.Term.TermUnit = termUnit;
+        subscritpionDetail.Term.TermUnit = subscription.Term; // raw string; null if absent, unknown values preserved
 
         subscritpionDetail.Purchaser = new PurchaserResult();
         subscritpionDetail.Purchaser.EmailId = subscription.PurchaserEmail;
