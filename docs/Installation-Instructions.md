@@ -39,13 +39,16 @@ chmod +x dotnet-install.sh; `
 ./dotnet-install.sh -version 10.0.400; `
 $ENV:PATH="$HOME/.dotnet:$ENV:PATH"; `
 dotnet tool install --global dotnet-ef --version 10.0.11; `
+$ENV:PATH="$HOME/.dotnet/tools:$ENV:PATH"; `
+
 git clone https://github.com/Azure/Commercial-Marketplace-SaaS-Accelerator.git -b 10.0.0 --depth 1; `
 cd ./Commercial-Marketplace-SaaS-Accelerator/deployment; `
+
 .\Deploy.ps1 `
  -WebAppNamePrefix "SOME-UNIQUE-STRING" `
  -ResourceGroupForDeployment "SOME-RG-NAME" `
  -PublisherAdminUsers "user1@email.com,user2@email" `
- -Location "East US" 
+ -Location "East US 2" 
  ```
 
 The script above will perform the following actions.
@@ -85,13 +88,33 @@ wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh; `
 chmod +x dotnet-install.sh; `
 ./dotnet-install.sh -version 10.0.400; `
 $ENV:PATH="$HOME/.dotnet:$ENV:PATH"; `
-dotnet tool update --global dotnet-ef --version 10.0.11; `
+dotnet tool install --global dotnet-ef --version 10.0.11; `
+$ENV:PATH="$HOME/.dotnet/tools:$ENV:PATH"; `
+
 git clone https://github.com/Azure/Commercial-Marketplace-SaaS-Accelerator.git -b <release-version-branch-to-deploy> --depth 1; `
 cd ./Commercial-Marketplace-SaaS-Accelerator/deployment; `
+
 .\Upgrade.ps1 `
  -WebAppNamePrefix "marketplace-SOME-UNIQUE-STRING" `
  -ResourceGroupForDeployment "marketplace-SOME-UNIQUE-STRING" `
  ```
+
+### Optional: skip database migrations
+
+By default, `Upgrade.ps1` generates and applies the Entity Framework migration script.
+
+Use `-SkipMigrations` only when you have independently confirmed that the currently deployed database requires no schema or data migrations for the target release. The script does not determine the deployed application or database version automatically.
+
+``` powershell
+.\Upgrade.ps1 `
+ -WebAppNamePrefix "marketplace-SOME-UNIQUE-STRING" `
+ -ResourceGroupForDeployment "marketplace-SOME-UNIQUE-STRING" `
+ -SkipMigrations
+```
+
+When `-SkipMigrations` is specified, the script skips all database operations: connection-string retrieval, compatibility SQL, migration-script generation, and migration execution. It still builds and deploys the Admin portal, Customer portal, and Meter Scheduler.
+
+> ⚠️ Do not use `-SkipMigrations` if the target release contains any required database schema or data changes, or if you cannot verify whether the deployed database needs them.
 
 ## Install script parameter descriptions
 

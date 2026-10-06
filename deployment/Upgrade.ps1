@@ -7,7 +7,8 @@
 
 Param(  
    [string][Parameter(Mandatory)]$WebAppNamePrefix, # Prefix used for creating web applications
-   [string][Parameter(Mandatory)]$ResourceGroupForDeployment # Name of the resource group to deploy the resources
+   [string][Parameter(Mandatory)]$ResourceGroupForDeployment, # Name of the resource group to deploy the resources
+   [switch]$SkipMigrations # Skip all database migration operations
 )
 
 # Define the message
@@ -78,17 +79,53 @@ $SQLDatabaseName = $WebAppNamePrefix +"AMPSaaSDB"
 $SQLServerName = $WebAppNamePrefix + "-sql"
 $ServerUri = $SQLServerName+".database.windows.net"
 $ServerUriPrivate = $SQLServerName+".privatelink.database.windows.net"
+$PublishRoot = "../Publish"
+
+#region Build code
+
+Write-host "#### STEP 1 Building code ####"
+
+$BuildMarker = Join-Path $PublishRoot ".upgrade-build-complete"
+$ExpectedPublishOutputs = @(
+	(Join-Path $PublishRoot "AdminSite\AdminSite.dll"),
+	(Join-Path $PublishRoot "AdminSite\app_data\jobs\triggered\MeteredTriggerJob\MeteredTriggerJob.dll"),
+	(Join-Path $PublishRoot "CustomerSite\CustomerSite.dll")
+)
+$PublishOutputComplete = @($ExpectedPublishOutputs | Where-Object { -not (Test-Path $_) }).Count -eq 0
+
+if ((Test-Path $BuildMarker) -and $PublishOutputComplete) {
+	Write-host "## STEP 1 Skipping build; existing publish output is complete."
+} else {
+	Write-host "## STEP 1.1 Building Admin Portal"
+	dotnet publish ../src/AdminSite/AdminSite.csproj -v q -c release -o (Join-Path $PublishRoot "AdminSite")
+	if ($LASTEXITCODE -ne 0) { throw "Failed to build Admin Portal." }
+
+	Write-host "## STEP 1.2 Building Meter Scheduler"
+	dotnet publish ../src/MeteredTriggerJob/MeteredTriggerJob.csproj -c release -o (Join-Path $PublishRoot "AdminSite\app_data\jobs\triggered\MeteredTriggerJob") --runtime win-x64 --self-contained true -p:PublishReadyToRun=false
+	if ($LASTEXITCODE -ne 0) { throw "Failed to build Meter Scheduler." }
+
+	Write-host "## STEP 1.3 Building Customer Portal"
+	dotnet publish ../src/CustomerSite/CustomerSite.csproj -v q -c release -o (Join-Path $PublishRoot "CustomerSite")
+	if ($LASTEXITCODE -ne 0) { throw "Failed to build Customer Portal." }
+
+	New-Item -ItemType File -Path $BuildMarker -Force | Out-Null
+}
+
+#endregion Build code
 
 #region Deploy Database
 
-# Ask user if their env is private end point protected and run a if else based on the response
-$isPEenv = Read-Host "Is your environment setup with private endpoints? (Y/N)"
+if ($SkipMigrations) {
+	Write-host "#### STEP 2 Database deployment skipped by -SkipMigrations ####" -ForegroundColor Yellow
+} else {
+	# Ask user if their env is private end point protected and run a if else based on the response
+	$isPEenv = Read-Host "Is your environment setup with private endpoints? (Y/N)"
 
-#### THIS SECTION DEPLOYS CODE AND DATABASE CHANGES
-Write-host "#### STEP 1 Database deployment start####"
+	#### THIS SECTION DEPLOYS CODE AND DATABASE CHANGES
+	Write-host "#### STEP 2 Database deployment start####"
 
 if ($isPEenv -ne 'Y' -and $isPEenv -ne 'y') {
-	
+
 	Write-host "## STEP 1.1 Retrieved ConnectionString from KeyVault"
 	$ConnectionString = az keyvault secret show `
 		--vault-name $KeyVault `
@@ -113,7 +150,7 @@ if ($isPEenv -ne 'Y' -and $isPEenv -ne 'y') {
 		--startup-project ../src/AdminSite/AdminSite.csproj `
 		--output script.sql
 
-    $compatibilityScript = "
+	$compatibilityScript = "
 	IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL 
 	-- No __EFMigrations table means Database has not been upgraded to support EF Migrations
 	BEGIN
@@ -137,14 +174,14 @@ if ($isPEenv -ne 'Y' -and $isPEenv -ne 'y') {
 	END;
 	GO"
 
-	
+
 	Write-host "## STEP 1.4 Running compatibility script"
 	Invoke-Sqlcmd -query $compatibilityScript -ServerInstance $Server -database $Database -Username $User -Password $Pass
 
 
 	Write-host "## STEP 1.5 START: Run migration against database"
 	Invoke-Sqlcmd -inputFile script.sql -ServerInstance $Server -database $Database -Username $User -Password $Pass
-	
+
 } else
 {
 	Write-host "## STEP 1.1 Constructing connection string with AAD auth"
@@ -163,7 +200,7 @@ if ($isPEenv -ne 'Y' -and $isPEenv -ne 'y') {
 
 	Write-Host "## STEP 1.4 Getting the IP"
 	$currentIP = (Invoke-WebRequest -Uri "http://ifconfig.me/ip").Content.Trim()
-	
+
 	Write-Host "## STEP 1.5 Add the current IP to the SQL server firewall rules"
 	az sql server firewall-rule create `
 		--resource-group $ResourceGroupForDeployment `
@@ -188,46 +225,37 @@ Remove-Item -Path ../src/AdminSite/appsettings.Development.json
 Remove-Item -Path script.sql
 
 Write-host "#### Database Deployment complete ####"	
-
+}
 
 #endregion Deploy Database
 
 #region Deploy code
 
-Write-host "#### STEP 2 Deploying new code ####" 
+Write-host "#### STEP 3 Deploying new code ####"
 
-Write-host "## STEP 2.1 Building Admin Portal" 
-dotnet publish ../src/AdminSite/AdminSite.csproj -v q -c release -o ../Publish/AdminSite/
+Write-host "## STEP 3.1 Compress packages."
+Compress-Archive -Path (Join-Path $PublishRoot "CustomerSite\*") -DestinationPath (Join-Path $PublishRoot "CustomerSite.zip") -Force
+Compress-Archive -Path (Join-Path $PublishRoot "AdminSite\*") -DestinationPath (Join-Path $PublishRoot "AdminSite.zip") -Force
 
-Write-host "## STEP 2.2 Building Meter Scheduler"
-dotnet publish ../src/MeteredTriggerJob/MeteredTriggerJob.csproj -c release -o ../Publish/AdminSite/app_data/jobs/triggered/MeteredTriggerJob/ --runtime win-x64 --self-contained true -p:PublishReadyToRun=false
-
-Write-host "## STEP 2.3 Building Customer Portal" 
-dotnet publish ../src/CustomerSite/CustomerSite.csproj -v q -c release -o ../Publish/CustomerSite
-
-Write-host "## STEP 2.4 Compress packages." 
-Compress-Archive -Path ../Publish/CustomerSite/* -DestinationPath ../Publish/CustomerSite.zip -Force
-Compress-Archive -Path ../Publish/AdminSite/* -DestinationPath ../Publish/AdminSite.zip -Force
-
-Write-host "## STEP 2.5 Deploying code to Admin Portal"
+Write-host "## STEP 3.2 Deploying code to Admin Portal"
 az webapp deploy `
 	--resource-group $ResourceGroupForDeployment `
 	--name $WebAppNameAdmin `
-	--src-path "../Publish/AdminSite.zip" `
+	--src-path (Join-Path $PublishRoot "AdminSite.zip") `
 	--type zip
 Write-host "## Deployed code to Admin Portal"
 
-Write-host "## STEP 2.6 Deploying code to Customer Portal"
+Write-host "## STEP 3.3 Deploying code to Customer Portal"
 az webapp deploy `
 	--resource-group $ResourceGroupForDeployment `
 	--name $WebAppNamePortal `
-	--src-path "../Publish/CustomerSite.zip"  `
+	--src-path (Join-Path $PublishRoot "CustomerSite.zip") `
 	--type zip
 Write-host "## Deployed code to Customer Portal"
 
 #endregion Deploy code
 
-Remove-Item -Path ../Publish -recurse -Force
+Remove-Item -Path $PublishRoot -recurse -Force
 Write-host "#### Code deployment complete ####" 
 Write-host ""
 Write-host "#### The upgrade process has completed successfully ####" 
